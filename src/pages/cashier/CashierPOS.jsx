@@ -119,28 +119,24 @@ export default function CashierPOS() {
           <ShoppingCart className="w-4 h-4 inline mr-2" />
           POS
         </button>
-        {user?.permissions?.viewSales && (
-          <button
-            onClick={() => setActiveView('sales')}
-            className={`px-6 py-2 rounded-lg font-medium transition-all ${
-              activeView === 'sales' ? 'bg-gradient-to-r from-green-600 to-teal-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            <BarChart3 className="w-4 h-4 inline mr-2" />
-            Sales
-          </button>
-        )}
-        {user?.permissions?.manageProducts && (
-          <button
-            onClick={() => setActiveView('stock')}
-            className={`px-6 py-2 rounded-lg font-medium transition-all ${
-              activeView === 'stock' ? 'bg-gradient-to-r from-green-600 to-teal-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            <Package className="w-4 h-4 inline mr-2" />
-            Stock
-          </button>
-        )}
+        <button
+          onClick={() => setActiveView('sales')}
+          className={`px-6 py-2 rounded-lg font-medium transition-all ${
+            activeView === 'sales' ? 'bg-gradient-to-r from-green-600 to-teal-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4 inline mr-2" />
+          Sales
+        </button>
+        <button
+          onClick={() => setActiveView('stock')}
+          className={`px-6 py-2 rounded-lg font-medium transition-all ${
+            activeView === 'stock' ? 'bg-gradient-to-r from-green-600 to-teal-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          <Package className="w-4 h-4 inline mr-2" />
+          Stock
+        </button>
       </div>
 
       {/* POS View */}
@@ -258,7 +254,7 @@ export default function CashierPOS() {
       )}
 
       {/* Stock Management View */}
-      {activeView === 'stock' && user?.permissions?.manageProducts && (
+      {activeView === 'stock' && (
         <div className="p-6 max-w-7xl mx-auto w-full space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold">Stock Management</h2>
@@ -407,7 +403,7 @@ export default function CashierPOS() {
       )}
 
       {/* Sales View */}
-      {activeView === 'sales' && user?.permissions?.viewSales && (
+      {activeView === 'sales' && (
         <div className="p-6 max-w-7xl mx-auto w-full space-y-6">
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
