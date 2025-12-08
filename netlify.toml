@@ -1,16 +1,16 @@
 [build]
-  command = "npm install && npm run build"
+  command = "npm install && npm --prefix netlify/functions install && npm run build"
   publish = "dist"
   functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "18"
-  NPM_FLAGS = "--legacy-peer-deps"
 
 [[redirects]]
   from = "/api/*"
-  to = "/.netlify/functions/api/:splat"
+  to = "/.netlify/functions/api"
   status = 200
+  force = true
 
 [[redirects]]
   from = "/*"
