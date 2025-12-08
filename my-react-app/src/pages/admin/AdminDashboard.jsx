@@ -1,0 +1,136 @@
+import { useState } from 'react';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { 
+  LayoutDashboard, ShoppingBag, Package, Layers, TrendingDown, 
+  Users, Settings, LogOut, Menu, X, ExternalLink 
+} from 'lucide-react';
+import Overview from './Overview';
+import Inventory from './Inventory';
+import Recipes from './Recipes';
+import Sales from './Sales';
+import Expenses from './Expenses';
+import UserManagement from './UserManagement';
+import SettingsPage from './SettingsPage';
+
+export default function AdminDashboard() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  const menuItems = [
+    { id: 'overview', label: 'Dashboard', icon: LayoutDashboard, path: '/admin' },
+    { id: 'sales', label: 'Sales', icon: ShoppingBag, path: '/admin/sales' },
+    { id: 'inventory', label: 'Inventory', icon: Package, path: '/admin/inventory' },
+    { id: 'recipes', label: 'Recipes/BOM', icon: Layers, path: '/admin/recipes' },
+    { id: 'expenses', label: 'Expenses', icon: TrendingDown, path: '/admin/expenses' },
+    { id: 'users', label: 'Users', icon: Users, path: '/admin/users' },
+    { id: 'settings', label: 'Settings', icon: Settings, path: '/admin/settings' }
+  ];
+
+  const isActive = (path) => {
+    if (path === '/admin') return location.pathname === '/admin';
+    return location.pathname.startsWith(path);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <aside className={`bg-white border-r border-gray-200 transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-20'} flex flex-col`}>
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            {sidebarOpen && (
+              <div>
+                <h2 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Admin Panel
+                </h2>
+                <p className="text-xs text-gray-500 mt-1">Ultra Package</p>
+              </div>
+            )}
+            <button 
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
+        </div>
+
+        <nav className="flex-1 p-4 space-y-2">
+          {menuItems.map(item => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                onClick={() => navigate(item.path)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                  isActive(item.path)
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <Icon className="w-5 h-5 flex-shrink-0" />
+                {sidebarOpen && <span className="font-medium">{item.label}</span>}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="p-4 border-t border-gray-200 space-y-2">
+          <button
+            onClick={() => window.open('/cashier', '_blank')}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            <ExternalLink className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span className="font-medium">Open POS</span>}
+          </button>
+          
+          <button
+            onClick={logout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <LogOut className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span className="font-medium">Logout</span>}
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
+        {/* Top Navbar */}
+        <header className="bg-white border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {menuItems.find(item => isActive(item.path))?.label || 'Dashboard'}
+              </h1>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-sm font-semibold text-gray-900">{user?.name}</p>
+                <p className="text-xs text-gray-500">{user?.email}</p>
+              </div>
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center text-white font-bold">
+                {user?.name?.charAt(0).toUpperCase()}
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="flex-1 overflow-auto">
+          <Routes>
+            <Route path="/" element={<Overview />} />
+            <Route path="/sales" element={<Sales />} />
+            <Route path="/inventory" element={<Inventory />} />
+            <Route path="/recipes" element={<Recipes />} />
+            <Route path="/expenses" element={<Expenses />} />
+            <Route path="/users" element={<UserManagement />} />
+            <Route path="/settings" element={<SettingsPage />} />
+          </Routes>
+        </main>
+      </div>
+    </div>
+  );
+}
