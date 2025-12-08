@@ -24,13 +24,13 @@ export default function Auth() {
       
       login(res.token, res.user);
       
-      // First user (admin) goes directly to admin dashboard
-      if (res.user.role === 'admin' && res.user.active) {
-        navigate('/admin');
-      } else if (res.user.active) {
-        navigate('/dashboard');
-      } else {
+      // All users go through subscription selection
+      if (!res.user.active) {
         navigate('/subscription');
+      } else if (res.user.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
       }
     } catch (err) {
       setError(err.message || 'An error occurred');

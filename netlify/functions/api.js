@@ -47,17 +47,16 @@ exports.handler = async (event, context) => {
       if (storage.users.some(u => u.email === data.email)) {
         return { statusCode: 400, headers, body: JSON.stringify({ error: 'User already exists' }) };
       }
-      const isFirstUser = storage.users.length === 0;
       const user = {
         id: storage.users.length + 1,
         email: data.email,
         password: data.password,
         name: data.name || '',
-        role: isFirstUser ? 'admin' : 'cashier',
-        plan: isFirstUser ? 'ultra' : null,
-        price: isFirstUser ? 1600 : null,
-        active: isFirstUser,
-        permissions: isFirstUser ? {} : { viewSales: true, viewInventory: true, viewExpenses: false, manageProducts: false },
+        role: 'cashier',
+        plan: null,
+        price: null,
+        active: false,
+        permissions: { viewSales: true, viewInventory: true, viewExpenses: false, manageProducts: false },
         createdAt: new Date().toISOString()
       };
       storage.users.push(user);
