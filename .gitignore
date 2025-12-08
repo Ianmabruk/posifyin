@@ -36,8 +36,7 @@ node_modules/
 *~
 
 # Backend data
-src/backend/data/
-*.json
+src/backend/data/*.json
 
 # Netlify
 .netlify/
