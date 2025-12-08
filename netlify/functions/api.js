@@ -1,6 +1,21 @@
-const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 const SECRET_KEY = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+
+// Simple token functions using crypto
+const createToken = (payload) => {
+  const data = JSON.stringify(payload);
+  const token = Buffer.from(data).toString('base64');
+  const signature = crypto.createHmac('sha256', SECRET_KEY).update(token).digest('base64');
+  return `${token}.${signature}`;
+};
+
+const verifyToken = (token) => {
+  const [data, signature] = token.split('.');
+  const expectedSignature = crypto.createHmac('sha256', SECRET_KEY).update(data).digest('base64');
+  if (signature !== expectedSignature) throw new Error('Invalid token');
+  return JSON.parse(Buffer.from(data, 'base64').toString());
+};
 
 // In-memory storage (replace with database in production)
 let storage = {
@@ -16,7 +31,7 @@ const tokenRequired = (handler) => async (event, context) => {
     return { statusCode: 401, body: JSON.stringify({ error: 'Token is missing' }) };
   }
   try {
-    const user = jwt.verify(token, SECRET_KEY);
+    const user = verifyToken(token);
     event.user = user;
     return handler(event, context);
   } catch {
@@ -62,7 +77,7 @@ exports.handler = async (event, context) => {
       };
       storage.users.push(user);
       
-      const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, SECRET_KEY);
+      const token = createToken({ id: user.id, email: user.email, role: user.role });
       const { password, ...userWithoutPassword } = user;
       return { statusCode: 200, headers, body: JSON.stringify({ token, user: userWithoutPassword }) };
     }
@@ -74,7 +89,7 @@ exports.handler = async (event, context) => {
         return { statusCode: 401, headers, body: JSON.stringify({ error: 'Invalid credentials' }) };
       }
       
-      const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, SECRET_KEY);
+      const token = createToken({ id: user.id, email: user.email, role: user.role });
       const { password, ...userWithoutPassword } = user;
       return { statusCode: 200, headers, body: JSON.stringify({ token, user: userWithoutPassword }) };
     }
@@ -118,7 +133,7 @@ exports.handler = async (event, context) => {
           return { statusCode: 404, headers, body: JSON.stringify({ error: 'User not found' }) };
         }
         Object.assign(user, body);
-        const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, SECRET_KEY);
+        const token = createToken({ id: user.id, email: user.email, role: user.role });
         const { password, ...userWithoutPassword } = user;
         return { statusCode: 200, headers, body: JSON.stringify({ token, user: userWithoutPassword }) };
       }
