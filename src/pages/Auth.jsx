@@ -6,9 +6,10 @@ import { Mail, Lock, User } from 'lucide-react';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(false);
-  const [formData, setFormData] = useState({ email: '', password: '', name: '' });
+  const [formData, setFormData] = useState({ email: '', password: '', name: '', newPassword: '', confirmPassword: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [needsPasswordSetup, setNeedsPasswordSetup] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
 
@@ -18,10 +19,31 @@ export default function Auth() {
     setLoading(true);
 
     try {
+      if (needsPasswordSetup) {
+        // Setting up password for first time
+        if (formData.newPassword !== formData.confirmPassword) {
+          setError('Passwords do not match');
+          setLoading(false);
+          return;
+        }
+        const res = await auth.login({ email: formData.email, newPassword: formData.newPassword });
+        login(res.token, res.user);
+        navigate('/cashier');
+        return;
+      }
+
       const res = isLogin 
         ? await auth.login({ email: formData.email, password: formData.password })
         : await auth.signup(formData);
       
+      // Check if user needs to set password
+      if (res.needsPasswordSetup) {
+        setNeedsPasswordSetup(true);
+        setError('');
+        setLoading(false);
+        return;
+      }
+
       login(res.token, res.user);
       
       // Users without active plan must choose subscription
@@ -54,43 +76,75 @@ export default function Auth() {
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-          {!isLogin && (
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Full Name"
-                className="input pl-10"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                required
-              />
-            </div>
+          {needsPasswordSetup ? (
+            // Password setup for cashiers added by admin
+            <>
+              <p className="text-sm text-gray-600 text-center mb-4">Welcome! Please set your password to continue.</p>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="password"
+                  placeholder="New Password"
+                  className="input pl-10"
+                  value={formData.newPassword}
+                  onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="password"
+                  placeholder="Confirm Password"
+                  className="input pl-10"
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                  required
+                />
+              </div>
+            </>
+          ) : (
+            // Normal signup/login
+            <>
+              {!isLogin && (
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Full Name"
+                    className="input pl-10"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    required
+                  />
+                </div>
+              )}
+              
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="email"
+                  placeholder="Email"
+                  className="input pl-10"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  required
+                />
+              </div>
+              
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="password"
+                  placeholder="Password"
+                  className="input pl-10"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  required
+                />
+              </div>
+            </>
           )}
-          
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="email"
-              placeholder="Email"
-              className="input pl-10"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              required
-            />
-          </div>
-          
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="password"
-              placeholder="Password"
-              className="input pl-10"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              required
-            />
-          </div>
 
           {error && <div className="text-red-600 text-sm text-center">{error}</div>}
 
@@ -103,15 +157,17 @@ export default function Auth() {
                 </svg>
                 Processing...
               </span>
-            ) : isLogin ? 'Login' : 'Sign Up'}
+            ) : needsPasswordSetup ? 'Set Password' : isLogin ? 'Login' : 'Sign Up'}
           </button>
         </form>
 
-        <div className="text-center mt-6">
-          <button onClick={() => setIsLogin(!isLogin)} className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-sm font-semibold transition-all">
-            {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Login'}
-          </button>
-        </div>
+        {!needsPasswordSetup && (
+          <div className="text-center mt-6">
+            <button onClick={() => setIsLogin(!isLogin)} className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-sm font-semibold transition-all">
+              {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Login'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

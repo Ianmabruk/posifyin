@@ -67,8 +67,25 @@ exports.handler = async (event, context) => {
 
     if (path === '/auth/login' && method === 'POST') {
       const data = JSON.parse(event.body);
-      const user = storage.users.find(u => u.email === data.email && u.password === data.password);
+      const user = storage.users.find(u => u.email === data.email);
       if (!user) return { statusCode: 401, headers, body: JSON.stringify({ error: 'Invalid credentials' }) };
+      
+      // First time login - set password
+      if (user.needsPasswordSetup && data.newPassword) {
+        user.password = data.newPassword;
+        user.needsPasswordSetup = false;
+        const token = createToken({ id: user.id, email: user.email, role: user.role });
+        const { password, ...userWithoutPassword } = user;
+        return { statusCode: 200, headers, body: JSON.stringify({ token, user: userWithoutPassword }) };
+      }
+      
+      // Check if needs password setup
+      if (user.needsPasswordSetup) {
+        return { statusCode: 200, headers, body: JSON.stringify({ needsPasswordSetup: true, userId: user.id, email: user.email }) };
+      }
+      
+      // Normal login
+      if (user.password !== data.password) return { statusCode: 401, headers, body: JSON.stringify({ error: 'Invalid credentials' }) };
       const token = createToken({ id: user.id, email: user.email, role: user.role });
       const { password, ...userWithoutPassword } = user;
       return { statusCode: 200, headers, body: JSON.stringify({ token, user: userWithoutPassword }) };
@@ -84,7 +101,7 @@ exports.handler = async (event, context) => {
 
       if (path === '/users' && method === 'POST') {
         if (event.user.role !== 'admin') return { statusCode: 403, headers, body: JSON.stringify({ error: 'Admin access required' }) };
-        const user = { id: storage.users.length + 1, ...body, password: body.password || 'changeme123', role: 'cashier', plan: 'basic', price: 900, active: true, createdAt: new Date().toISOString() };
+        const user = { id: storage.users.length + 1, ...body, password: null, needsPasswordSetup: true, role: 'cashier', plan: 'basic', price: 900, active: true, createdAt: new Date().toISOString() };
         storage.users.push(user);
         const { password, ...userWithoutPassword } = user;
         return { statusCode: 201, headers, body: JSON.stringify(userWithoutPassword) };
