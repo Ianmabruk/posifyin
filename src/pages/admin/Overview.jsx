@@ -1,0 +1,189 @@
+import { useState, useEffect } from 'react';
+import { stats, sales as salesApi } from '../../services/api';
+import { DollarSign, TrendingUp, TrendingDown, ShoppingBag, Package, AlertCircle } from 'lucide-react';
+
+export default function Overview() {
+  const [data, setData] = useState({ stats: {}, recentSales: [] });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const [statsData, salesData] = await Promise.all([
+        stats.get(),
+        salesApi.getAll()
+      ]);
+      setData({ stats: statsData, recentSales: salesData.slice(-10).reverse() });
+    } catch (error) {
+      console.error('Failed to load data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  const kpis = [
+    {
+      label: 'Total Sales',
+      value: `KSH ${data.stats.totalSales?.toLocaleString() || 0}`,
+      icon: DollarSign,
+      color: 'from-green-500 to-emerald-600',
+      change: '+12.5%'
+    },
+    {
+      label: 'Gross Profit',
+      value: `KSH ${data.stats.grossProfit?.toLocaleString() || 0}`,
+      icon: TrendingUp,
+      color: 'from-blue-500 to-indigo-600',
+      change: '+8.2%'
+    },
+    {
+      label: 'Total COGS',
+      value: `KSH ${data.stats.totalCOGS?.toLocaleString() || 0}`,
+      icon: Package,
+      color: 'from-orange-500 to-red-600',
+      change: '+5.1%'
+    },
+    {
+      label: 'Net Profit',
+      value: `KSH ${data.stats.netProfit?.toLocaleString() || 0}`,
+      icon: TrendingUp,
+      color: 'from-purple-500 to-pink-600',
+      change: '+15.3%'
+    }
+  ];
+
+  const summaryCards = [
+    {
+      label: 'Daily Sales',
+      value: `KSH ${data.stats.dailySales?.toLocaleString() || 0}`,
+      icon: ShoppingBag,
+      color: 'bg-blue-50 text-blue-600'
+    },
+    {
+      label: 'Weekly Sales',
+      value: `KSH ${data.stats.weeklySales?.toLocaleString() || 0}`,
+      icon: TrendingUp,
+      color: 'bg-green-50 text-green-600'
+    },
+    {
+      label: 'Total Expenses',
+      value: `KSH ${data.stats.totalExpenses?.toLocaleString() || 0}`,
+      icon: TrendingDown,
+      color: 'bg-red-50 text-red-600'
+    },
+    {
+      label: 'Products',
+      value: data.stats.productCount || 0,
+      icon: Package,
+      color: 'bg-purple-50 text-purple-600'
+    }
+  ];
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {kpis.map((kpi, index) => {
+          const Icon = kpi.icon;
+          return (
+            <div key={index} className={`card bg-gradient-to-br ${kpi.color} text-white border-0 shadow-lg hover:shadow-xl transition-all transform hover:scale-105`}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                  <Icon className="w-6 h-6" />
+                </div>
+                <span className="text-sm font-semibold bg-white/20 px-2 py-1 rounded-full">
+                  {kpi.change}
+                </span>
+              </div>
+              <p className="text-sm text-white/80 mb-1">{kpi.label}</p>
+              <p className="text-2xl font-bold">{kpi.value}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {summaryCards.map((card, index) => {
+          const Icon = card.icon;
+          return (
+            <div key={index} className="card">
+              <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-xl ${card.color} flex items-center justify-center`}>
+                  <Icon className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">{card.label}</p>
+                  <p className="text-xl font-bold text-gray-900">{card.value}</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Recent Sales */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold">Recent Sales</h3>
+          <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+            View All
+          </button>
+        </div>
+        
+        {data.recentSales.length === 0 ? (
+          <div className="text-center py-12">
+            <AlertCircle className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500">No sales yet</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Date & Time</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Items</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Payment</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Total</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">COGS</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Profit</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.recentSales.map((sale) => (
+                  <tr key={sale.id} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 text-sm">{new Date(sale.createdAt).toLocaleString()}</td>
+                    <td className="px-4 py-3 text-sm">{sale.items?.length || 0} items</td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className="badge badge-success">{sale.paymentMethod}</span>
+                    </td>
+                    <td className="px-4 py-3 text-sm font-semibold text-green-600">
+                      KSH {sale.total?.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-orange-600">
+                      KSH {sale.cogs?.toLocaleString() || 0}
+                    </td>
+                    <td className="px-4 py-3 text-sm font-semibold text-blue-600">
+                      KSH {sale.profit?.toLocaleString() || 0}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

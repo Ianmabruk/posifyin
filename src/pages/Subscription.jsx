@@ -1,0 +1,140 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { Check, Crown, Zap } from 'lucide-react';
+
+export default function Subscription() {
+  const [selected, setSelected] = useState('ultra');
+  const navigate = useNavigate();
+  const { user, updateUser } = useAuth();
+
+  const plans = [
+    {
+      id: 'basic',
+      name: 'Basic Package',
+      price: 900,
+      icon: Zap,
+      color: 'from-green-500 to-teal-600',
+      features: [
+        'Cashier Dashboard Only',
+        'Basic Inventory Management',
+        'Sales Tracking',
+        'Daily/Weekly Sales Summaries',
+        'Basic Profit/Loss View',
+        'Limited Email Notifications',
+        'Record Products Sold',
+        'Single User Access'
+      ]
+    },
+    {
+      id: 'ultra',
+      name: 'Ultra Package',
+      price: 1600,
+      icon: Crown,
+      color: 'from-blue-600 to-purple-600',
+      popular: true,
+      features: [
+        'Admin Dashboard + Cashier POS',
+        'Full Inventory Management',
+        'Recipe/BOM Builder',
+        'Composite Products Support',
+        'Automatic Stock Deduction',
+        'COGS Calculation',
+        'User Management',
+        'Permission Controls',
+        'Expense Tracking',
+        'Advanced Analytics',
+        'Unlimited Users'
+      ]
+    }
+  ];
+
+  const handleSubscribe = async () => {
+    const plan = plans.find(p => p.id === selected);
+    const role = selected === 'ultra' ? 'admin' : 'cashier';
+    
+    const updatedUser = { 
+      ...user, 
+      role, 
+      plan: selected, 
+      price: plan.price, 
+      active: true 
+    };
+    
+    await updateUser(updatedUser);
+    
+    // Small delay to ensure token is updated
+    setTimeout(() => {
+      window.location.href = role === 'admin' ? '/admin' : '/cashier';
+    }, 500);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 py-12 px-6">
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-12 animate-fade-in">
+          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Choose Your Plan
+          </h1>
+          <p className="text-gray-600 text-lg">Select the perfect plan for your business needs</p>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-8 mb-8">
+          {plans.map((plan) => {
+            const Icon = plan.icon;
+            return (
+              <div
+                key={plan.id}
+                onClick={() => setSelected(plan.id)}
+                className={`card cursor-pointer transition-all transform hover:scale-105 relative ${
+                  selected === plan.id 
+                    ? 'ring-4 ring-blue-600 shadow-2xl bg-gradient-to-br from-blue-50 to-purple-50' 
+                    : 'hover:shadow-xl'
+                }`}
+              >
+                {plan.popular && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                    <span className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-1 rounded-full text-sm font-semibold shadow-lg">
+                      Most Popular
+                    </span>
+                  </div>
+                )}
+                
+                <div className="flex items-center gap-3 mb-4">
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${plan.color} flex items-center justify-center`}>
+                    <Icon className="w-6 h-6 text-white" />
+                  </div>
+                  <h3 className="text-2xl font-bold">{plan.name}</h3>
+                </div>
+                
+                <div className="mb-6">
+                  <span className="text-4xl font-bold">KSH {plan.price}</span>
+                  <span className="text-gray-600">/month</span>
+                </div>
+                
+                <ul className="space-y-3">
+                  {plan.features.map((feature, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                      <span className="text-sm">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="text-center animate-fade-in">
+          <button 
+            onClick={handleSubscribe} 
+            className="btn-primary px-12 py-4 text-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
+          >
+            Continue to Dashboard
+          </button>
+          <p className="text-sm text-gray-500 mt-4">Start your journey today • Cancel anytime</p>
+        </div>
+      </div>
+    </div>
+  );
+}
