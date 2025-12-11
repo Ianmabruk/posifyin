@@ -1,0 +1,5 @@
+
+/api/*  /.netlify/functions/api/:splat  200
+/admin/*  /index.html  200  Force
+/cashier/*  /index.html  200  Force
+/*      /index.html                        200  Force
