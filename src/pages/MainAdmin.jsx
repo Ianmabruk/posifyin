@@ -12,6 +12,8 @@ export default function MainAdmin() {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [emailData, setEmailData] = useState({ subject: '', message: '' });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [stats, setStats] = useState({
     totalUsers: 0,
     activeUsers: 0,
@@ -22,7 +24,7 @@ export default function MainAdmin() {
   });
 
   useEffect(() => {
-    loadData();
+    loadData().finally(() => setLoading(false));
   }, []);
 
   const loadData = async () => {
@@ -31,23 +33,50 @@ export default function MainAdmin() {
       const API_URL = import.meta.env.PROD ? '/api' : 'http://localhost:5001/api';
       
       // Load users
-      const usersRes = await fetch(`${API_URL}/main-admin/users`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const usersData = await usersRes.json();
-      setUsers(usersData);
+      try {
+        const usersRes = await fetch(`${API_URL}/main-admin/users`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (usersRes.ok) {
+          const usersData = await usersRes.json();
+          setUsers(usersData);
+        } else {
+          // Fallback: Load from regular users endpoint
+          const fallbackRes = await fetch(`${API_URL}/users`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (fallbackRes.ok) {
+            const usersData = await fallbackRes.json();
+            setUsers(usersData);
+          }
+        }
+      } catch (err) {
+        console.log('Users endpoint not available, using empty data');
+        setUsers([]);
+      }
 
       // Load payments
-      const paymentsRes = await fetch(`${API_URL}/main-admin/payments`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const paymentsData = await paymentsRes.json();
-      setPayments(paymentsData);
+      try {
+        const paymentsRes = await fetch(`${API_URL}/main-admin/payments`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (paymentsRes.ok) {
+          const paymentsData = await paymentsRes.json();
+          setPayments(paymentsData);
+        }
+      } catch (err) {
+        console.log('Payments endpoint not available, using empty data');
+        setPayments([]);
+      }
 
       // Calculate stats
-      calculateStats(usersData, paymentsData);
+      calculateStats(users, payments);
     } catch (error) {
       console.error('Failed to load data:', error);
+      // Don't break the page, just show empty state
+      setUsers([]);
+      setPayments([]);
+      calculateStats([], []);
     }
   };
 
@@ -74,7 +103,7 @@ export default function MainAdmin() {
       const token = localStorage.getItem('token');
       const API_URL = import.meta.env.PROD ? '/api' : 'http://localhost:5001/api';
       
-      await fetch(`${API_URL}/main-admin/users/${userId}/lock`, {
+      const response = await fetch(`${API_URL}/main-admin/users/${userId}/lock`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -83,9 +112,14 @@ export default function MainAdmin() {
         body: JSON.stringify({ locked: !currentLockStatus })
       });
       
-      loadData();
+      if (response.ok) {
+        loadData();
+      } else {
+        alert('Failed to update user lock status. Backend may not be available.');
+      }
     } catch (error) {
       console.error('Failed to toggle lock:', error);
+      alert('Failed to update user lock status. Please check your connection.');
     }
   };
 
@@ -94,7 +128,7 @@ export default function MainAdmin() {
       const token = localStorage.getItem('token');
       const API_URL = import.meta.env.PROD ? '/api' : 'http://localhost:5001/api';
       
-      await fetch(`${API_URL}/main-admin/send-email`, {
+      const response = await fetch(`${API_URL}/main-admin/send-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -103,13 +137,17 @@ export default function MainAdmin() {
         body: JSON.stringify({ userIds, subject, message })
       });
       
-      alert('Emails sent successfully!');
-      setShowEmailModal(false);
-      setSelectedUsers([]);
-      setEmailData({ subject: '', message: '' });
+      if (response.ok) {
+        alert('Emails sent successfully!');
+        setShowEmailModal(false);
+        setSelectedUsers([]);
+        setEmailData({ subject: '', message: '' });
+      } else {
+        alert('Failed to send emails. Backend may not be available.');
+      }
     } catch (error) {
       console.error('Failed to send email:', error);
-      alert('Failed to send emails');
+      alert('Failed to send emails. Please check your connection.');
     }
   };
 
@@ -148,6 +186,17 @@ export default function MainAdmin() {
     
     return { pending, overdue, paid, total: userPayments.length };
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-blue-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-white mx-auto mb-4"></div>
+          <p className="text-white text-xl">Loading Main Admin Dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-blue-900">
@@ -279,6 +328,19 @@ export default function MainAdmin() {
                 </tr>
               </thead>
               <tbody>
+                {filteredUsers.length === 0 && (
+                  <tr>
+                    <td colSpan="7" className="px-4 py-12 text-center">
+                      <Users className="w-16 h-16 text-gray-500 mx-auto mb-4" />
+                      <p className="text-gray-400 text-lg">No users found</p>
+                      <p className="text-gray-500 text-sm mt-2">
+                        {searchTerm || filter !== 'all' 
+                          ? 'Try adjusting your filters' 
+                          : 'Users will appear here once they sign up'}
+                      </p>
+                    </td>
+                  </tr>
+                )}
                 {filteredUsers.map(user => {
                   const paymentStatus = getUserPaymentStatus(user.id);
                   return (
