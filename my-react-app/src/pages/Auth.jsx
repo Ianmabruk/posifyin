@@ -6,9 +6,10 @@ import { Mail, Lock, User } from 'lucide-react';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(false);
-  const [formData, setFormData] = useState({ email: '', password: '', name: '' });
+  const [formData, setFormData] = useState({ email: '', password: '', name: '', newPassword: '', confirmPassword: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [needsPasswordSetup, setNeedsPasswordSetup] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
 
@@ -18,19 +19,57 @@ export default function Auth() {
     setLoading(true);
 
     try {
+      if (needsPasswordSetup) {
+        // Setting up password for first time
+        if (formData.newPassword !== formData.confirmPassword) {
+          setError('Passwords do not match');
+          setLoading(false);
+          return;
+        }
+        if (formData.newPassword.length < 6) {
+          setError('Password must be at least 6 characters');
+          setLoading(false);
+          return;
+        }
+        const res = await auth.login({ email: formData.email, newPassword: formData.newPassword });
+        if (res.token && res.user) {
+          login(res.token, res.user);
+          // Force redirect to cashier dashboard
+          window.location.href = '/cashier';
+        }
+        return;
+      }
+
       const res = isLogin 
         ? await auth.login({ email: formData.email, password: formData.password })
         : await auth.signup(formData);
       
+      // Check if user needs to set password
+      if (res.needsPasswordSetup) {
+        setNeedsPasswordSetup(true);
+        setFormData({ ...formData, email: res.email });
+        setError('');
+        setLoading(false);
+        return;
+      }
+
       login(res.token, res.user);
       
-      // First user (admin) goes directly to admin dashboard
-      if (res.user.role === 'admin' && res.user.active) {
-        navigate('/admin');
-      } else if (res.user.active) {
-        navigate('/dashboard');
-      } else {
+      // Cashiers added by admin go directly to cashier dashboard
+      if (res.user.role === 'cashier' && res.user.addedByAdmin) {
+        window.location.href = '/cashier';
+        return;
+      }
+      
+      // Users without active plan must choose subscription
+      if (!res.user.active || !res.user.plan) {
         navigate('/subscription');
+      } else if (res.user.role === 'admin') {
+        navigate('/admin');
+      } else if (res.user.role === 'cashier') {
+        navigate('/cashier');
+      } else {
+        navigate('/dashboard');
       }
     } catch (err) {
       setError(err.message || 'An error occurred');
@@ -40,61 +79,93 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center p-4 md:p-6">
       <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
       <div className="card w-full max-w-md shadow-2xl backdrop-blur-sm bg-white/95 border-0 animate-fade-in relative z-10">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg">
-            <span className="text-2xl font-bold text-white">POS</span>
+        <div className="text-center mb-6 md:mb-8">
+          <div className="w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl mx-auto mb-3 md:mb-4 flex items-center justify-center shadow-lg">
+            <span className="text-xl md:text-2xl font-bold text-white">POS</span>
           </div>
-          <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl md:text-3xl font-bold mb-2 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             {isLogin ? 'Welcome Back' : 'Get Started'}
           </h1>
-          <p className="text-gray-600 text-sm">{isLogin ? 'Login to your account' : 'Create your account to continue'}</p>
+          <p className="text-gray-600 text-xs md:text-sm">{isLogin ? 'Login to your account' : 'Create your account to continue'}</p>
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-4">
-          {!isLogin && (
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Full Name"
-                className="input pl-10"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                required
-              />
-            </div>
+          {needsPasswordSetup ? (
+            // Password setup for cashiers added by admin
+            <>
+              <p className="text-sm text-gray-600 text-center mb-4">Welcome! Please set your password to continue.</p>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="password"
+                  placeholder="New Password"
+                  className="input pl-10"
+                  value={formData.newPassword}
+                  onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="password"
+                  placeholder="Confirm Password"
+                  className="input pl-10"
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                  required
+                />
+              </div>
+            </>
+          ) : (
+            // Normal signup/login
+            <>
+              {!isLogin && (
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Full Name"
+                    className="input pl-10"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    required
+                  />
+                </div>
+              )}
+              
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="email"
+                  placeholder="Email"
+                  className="input pl-10"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  required
+                />
+              </div>
+              
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="password"
+                  placeholder="Password"
+                  className="input pl-10"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  required
+                />
+              </div>
+            </>
           )}
-          
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="email"
-              placeholder="Email"
-              className="input pl-10"
-              value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              required
-            />
-          </div>
-          
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="password"
-              placeholder="Password"
-              className="input pl-10"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              required
-            />
-          </div>
 
           {error && <div className="text-red-600 text-sm text-center">{error}</div>}
 
-          <button type="submit" disabled={loading} className="btn-primary w-full text-lg py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+          <button type="submit" disabled={loading} className="btn-primary w-full text-base md:text-lg py-2.5 md:py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
             {loading ? (
               <span className="flex items-center justify-center gap-2">
                 <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
@@ -103,15 +174,17 @@ export default function Auth() {
                 </svg>
                 Processing...
               </span>
-            ) : isLogin ? 'Login' : 'Sign Up'}
+            ) : needsPasswordSetup ? 'Set Password' : isLogin ? 'Login' : 'Sign Up'}
           </button>
         </form>
 
-        <div className="text-center mt-6">
-          <button onClick={() => setIsLogin(!isLogin)} className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-sm font-semibold transition-all">
-            {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Login'}
-          </button>
-        </div>
+        {!needsPasswordSetup && (
+          <div className="text-center mt-6">
+            <button onClick={() => setIsLogin(!isLogin)} className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-sm font-semibold transition-all">
+              {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Login'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

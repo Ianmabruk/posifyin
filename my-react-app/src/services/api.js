@@ -52,3 +52,56 @@ export const users = {
   update: (id, data) => request(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   delete: (id) => request(`/users/${id}`, { method: 'DELETE' })
 };
+
+export const reminders = {
+  getAll: () => request('/reminders'),
+  getToday: () => request('/reminders/today'),
+  create: (data) => request('/reminders', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id, data) => request(`/reminders/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id) => request(`/reminders/${id}`, { method: 'DELETE' })
+};
+
+export const priceHistory = {
+  getAll: () => request('/price-history'),
+  create: (data) => request('/price-history', { method: 'POST', body: JSON.stringify(data) })
+};
+
+export const serviceFees = {
+  getAll: () => request('/service-fees'),
+  create: (data) => request('/service-fees', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id, data) => request(`/service-fees/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id) => request(`/service-fees/${id}`, { method: 'DELETE' })
+};
+
+export const discounts = {
+  getAll: () => request('/discounts'),
+  create: (data) => request('/discounts', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id, data) => request(`/discounts/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (id) => request(`/discounts/${id}`, { method: 'DELETE' })
+};
+
+export const creditRequests = {
+  getAll: () => request('/credit-requests'),
+  create: (data) => request('/credit-requests', { method: 'POST', body: JSON.stringify(data) }),
+  approve: (id) => request(`/credit-requests/${id}/approve`, { method: 'POST' }),
+  reject: (id) => request(`/credit-requests/${id}/reject`, { method: 'POST' })
+};
+
+export const settings = {
+  get: () => request('/settings'),
+  update: (data) => request('/settings', { method: 'POST', body: JSON.stringify(data) })
+};
+
+export const batches = {
+  getAll: (productId) => request(`/batches${productId ? `?productId=${productId}` : ''}`),
+  create: (data) => request('/batches', { method: 'POST', body: JSON.stringify(data) })
+};
+
+export const production = {
+  getAll: () => request('/production'),
+  create: (data) => request('/production', { method: 'POST', body: JSON.stringify(data) })
+};
+
+export const categories = {
+  generateCode: (data) => request('/categories/generate-code', { method: 'POST', body: JSON.stringify(data) })
+};

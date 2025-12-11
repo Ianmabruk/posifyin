@@ -388,5 +388,423 @@ def stats():
         'productCount': len(products)
     })
 
+@app.route('/api/reminders', methods=['GET', 'POST'])
+@token_required
+def reminders():
+    if request.method == 'GET':
+        reminders = load_json('reminders.json')
+        return jsonify(reminders)
+    
+    data = request.json
+    reminders = load_json('reminders.json')
+    reminder = {
+        'id': len(reminders) + 1,
+        'customerName': data['customerName'],
+        'productId': data['productId'],
+        'frequency': data['frequency'],
+        'days': data.get('days', []),
+        'nextDate': data['nextDate'],
+        'status': 'pending',
+        'createdAt': datetime.now().isoformat()
+    }
+    reminders.append(reminder)
+    save_json('reminders.json', reminders)
+    return jsonify(reminder), 201
+
+@app.route('/api/reminders/<int:id>', methods=['PUT', 'DELETE'])
+@token_required
+def reminder_detail(id):
+    reminders = load_json('reminders.json')
+    reminder = next((r for r in reminders if r['id'] == id), None)
+    if not reminder:
+        return jsonify({'error': 'Reminder not found'}), 404
+    
+    if request.method == 'PUT':
+        data = request.json
+        reminder.update({k: v for k, v in data.items() if k != 'id'})
+        save_json('reminders.json', reminders)
+        return jsonify(reminder)
+    
+    reminders = [r for r in reminders if r['id'] != id]
+    save_json('reminders.json', reminders)
+    return '', 204
+
+@app.route('/api/reminders/today', methods=['GET'])
+@token_required
+def reminders_today():
+    reminders = load_json('reminders.json')
+    today = datetime.now().date().isoformat()
+    today_reminders = [r for r in reminders if r.get('nextDate', '')[:10] <= today and r.get('status') == 'pending']
+    return jsonify(today_reminders)
+
+@app.route('/api/price-history', methods=['GET', 'POST'])
+@token_required
+def price_history():
+    if request.method == 'GET':
+        history = load_json('price_history.json')
+        return jsonify(history)
+    
+    data = request.json
+    if data['newPrice'] < data['oldPrice']:
+        return jsonify({'error': 'You cannot lower prices, only increase.'}), 400
+    
+    history = load_json('price_history.json')
+    record = {
+        'id': len(history) + 1,
+        'productId': data['productId'],
+        'oldPrice': data['oldPrice'],
+        'newPrice': data['newPrice'],
+        'userId': request.user.get('id'),
+        'timestamp': datetime.now().isoformat()
+    }
+    history.append(record)
+    save_json('price_history.json', history)
+    return jsonify(record), 201
+
+@app.route('/api/service-fees', methods=['GET', 'POST'])
+@token_required
+def service_fees():
+    if request.method == 'GET':
+        fees = load_json('service_fees.json')
+        return jsonify(fees)
+    
+    data = request.json
+    fees = load_json('service_fees.json')
+    fee = {
+        'id': len(fees) + 1,
+        'name': data['name'],
+        'amount': data['amount'],
+        'description': data.get('description', ''),
+        'active': data.get('active', True),
+        'createdAt': datetime.now().isoformat()
+    }
+    fees.append(fee)
+    save_json('service_fees.json', fees)
+    return jsonify(fee), 201
+
+@app.route('/api/service-fees/<int:id>', methods=['PUT', 'DELETE'])
+@token_required
+def service_fee_detail(id):
+    fees = load_json('service_fees.json')
+    fee = next((f for f in fees if f['id'] == id), None)
+    if not fee:
+        return jsonify({'error': 'Fee not found'}), 404
+    
+    if request.method == 'PUT':
+        data = request.json
+        fee.update({k: v for k, v in data.items() if k != 'id'})
+        save_json('service_fees.json', fees)
+        return jsonify(fee)
+    
+    fees = [f for f in fees if f['id'] != id]
+    save_json('service_fees.json', fees)
+    return '', 204
+
+@app.route('/api/discounts', methods=['GET', 'POST'])
+@token_required
+def discounts():
+    if request.method == 'GET':
+        discounts = load_json('discounts.json')
+        return jsonify(discounts)
+    
+    data = request.json
+    discounts = load_json('discounts.json')
+    discount = {
+        'id': len(discounts) + 1,
+        'name': data['name'],
+        'percentage': data['percentage'],
+        'validFrom': data['validFrom'],
+        'validTo': data['validTo'],
+        'active': data.get('active', True),
+        'createdAt': datetime.now().isoformat()
+    }
+    discounts.append(discount)
+    save_json('discounts.json', discounts)
+    return jsonify(discount), 201
+
+@app.route('/api/discounts/<int:id>', methods=['PUT', 'DELETE'])
+@token_required
+def discount_detail(id):
+    discounts = load_json('discounts.json')
+    discount = next((d for d in discounts if d['id'] == id), None)
+    if not discount:
+        return jsonify({'error': 'Discount not found'}), 404
+    
+    if request.method == 'PUT':
+        data = request.json
+        discount.update({k: v for k, v in data.items() if k != 'id'})
+        save_json('discounts.json', discounts)
+        return jsonify(discount)
+    
+    discounts = [d for d in discounts if d['id'] != id]
+    save_json('discounts.json', discounts)
+    return '', 204
+
+@app.route('/api/credit-requests', methods=['GET', 'POST'])
+@token_required
+def credit_requests():
+    if request.method == 'GET':
+        requests = load_json('credit_requests.json')
+        return jsonify(requests)
+    
+    data = request.json
+    requests = load_json('credit_requests.json')
+    credit_request = {
+        'id': len(requests) + 1,
+        'productId': data['productId'],
+        'quantity': data['quantity'],
+        'customerName': data['customerName'],
+        'amount': data['amount'],
+        'cashierId': request.user.get('id'),
+        'status': 'pending',
+        'createdAt': datetime.now().isoformat()
+    }
+    requests.append(credit_request)
+    save_json('credit_requests.json', requests)
+    return jsonify(credit_request), 201
+
+@app.route('/api/credit-requests/<int:id>/approve', methods=['POST'])
+@token_required
+def approve_credit(id):
+    if request.user.get('role') != 'admin':
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    requests = load_json('credit_requests.json')
+    credit_request = next((r for r in requests if r['id'] == id), None)
+    if not credit_request:
+        return jsonify({'error': 'Request not found'}), 404
+    
+    credit_request['status'] = 'approved'
+    credit_request['approvedAt'] = datetime.now().isoformat()
+    save_json('credit_requests.json', requests)
+    return jsonify(credit_request)
+
+@app.route('/api/credit-requests/<int:id>/reject', methods=['POST'])
+@token_required
+def reject_credit(id):
+    if request.user.get('role') != 'admin':
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    requests = load_json('credit_requests.json')
+    credit_request = next((r for r in requests if r['id'] == id), None)
+    if not credit_request:
+        return jsonify({'error': 'Request not found'}), 404
+    
+    credit_request['status'] = 'rejected'
+    save_json('credit_requests.json', requests)
+    return jsonify(credit_request)
+
+@app.route('/api/settings', methods=['GET', 'POST'])
+@token_required
+def settings():
+    if request.method == 'GET':
+        settings = load_json('settings.json')
+        return jsonify(settings[0] if settings else {})
+    
+    data = request.json
+    settings = load_json('settings.json')
+    if settings:
+        settings[0].update(data)
+    else:
+        settings = [data]
+    save_json('settings.json', settings)
+    return jsonify(settings[0])
+
+@app.route('/api/batches', methods=['GET', 'POST'])
+@token_required
+def batches():
+    if request.method == 'GET':
+        batches = load_json('batches.json')
+        product_id = request.args.get('productId')
+        if product_id:
+            batches = [b for b in batches if b['productId'] == int(product_id)]
+        return jsonify(batches)
+    
+    data = request.json
+    batches = load_json('batches.json')
+    batch = {
+        'id': len(batches) + 1,
+        'productId': data['productId'],
+        'batchCode': data.get('batchCode', f"B{len(batches) + 1:04d}"),
+        'buyingPrice': data['buyingPrice'],
+        'sellingPrice': data['sellingPrice'],
+        'quantity': data['quantity'],
+        'remaining': data['quantity'],
+        'type': data.get('type', 'new'),
+        'createdAt': datetime.now().isoformat()
+    }
+    batches.append(batch)
+    save_json('batches.json', batches)
+    return jsonify(batch), 201
+
+@app.route('/api/production', methods=['GET', 'POST'])
+@token_required
+def production():
+    if request.method == 'GET':
+        production = load_json('production.json')
+        return jsonify(production)
+    
+    data = request.json
+    production_list = load_json('production.json')
+    batches = load_json('batches.json')
+    
+    record = {
+        'id': len(production_list) + 1,
+        'sourceProductId': data['sourceProductId'],
+        'targetProductId': data['targetProductId'],
+        'quantityUsed': data['quantityUsed'],
+        'quantityProduced': data['quantityProduced'],
+        'waste': data.get('waste', 0),
+        'userId': request.user.get('id'),
+        'createdAt': datetime.now().isoformat()
+    }
+    
+    # Deduct from old batches first (FIFO)
+    remaining_to_deduct = data['quantityUsed']
+    source_batches = sorted([b for b in batches if b['productId'] == data['sourceProductId'] and b['remaining'] > 0], key=lambda x: x['createdAt'])
+    
+    for batch in source_batches:
+        if remaining_to_deduct <= 0:
+            break
+        deduct = min(batch['remaining'], remaining_to_deduct)
+        batch['remaining'] -= deduct
+        remaining_to_deduct -= deduct
+    
+    save_json('batches.json', batches)
+    production_list.append(record)
+    save_json('production.json', production_list)
+    return jsonify(record), 201
+
+@app.route('/api/categories/generate-code', methods=['POST'])
+@token_required
+def generate_code():
+    data = request.json
+    products = load_json('products.json')
+    prefix = data.get('prefix', 'P')
+    category_products = [p for p in products if p.get('category') == data.get('category')]
+    next_num = len(category_products) + 1
+    code = f"{prefix}{next_num:03d}"
+    return jsonify({'code': code})
+
+@app.route('/api/upload-image', methods=['POST'])
+@token_required
+def upload_image():
+    """Handle base64 image uploads for products and profiles"""
+    data = request.json
+    image_data = data.get('image')  # Base64 encoded image
+    image_type = data.get('type', 'product')  # 'product', 'profile', 'logo'
+    
+    # Store image data (in production, you'd save to file system or cloud storage)
+    # For now, we'll just return the base64 data back
+    return jsonify({'imageUrl': image_data, 'type': image_type})
+
+# Main Admin Routes
+@app.route('/api/main-admin/users', methods=['GET'])
+@token_required
+def main_admin_get_users():
+    """Get all users with payment info for main admin"""
+    users = load_json('users.json')
+    # Add locked field if not present
+    for user in users:
+        if 'locked' not in user:
+            user['locked'] = False
+    save_json('users.json', users)
+    return jsonify([{k: v for k, v in u.items() if k != 'password'} for u in users])
+
+@app.route('/api/main-admin/payments', methods=['GET'])
+@token_required
+def main_admin_get_payments():
+    """Get all payments for main admin"""
+    payments = load_json('payments.json')
+    return jsonify(payments)
+
+@app.route('/api/main-admin/users/<int:user_id>/lock', methods=['POST'])
+@token_required
+def main_admin_lock_user(user_id):
+    """Lock or unlock a user account"""
+    data = request.json
+    users = load_json('users.json')
+    user = next((u for u in users if u['id'] == user_id), None)
+    
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    user['locked'] = data.get('locked', False)
+    if user['locked']:
+        user['active'] = False
+    
+    save_json('users.json', users)
+    return jsonify({'success': True, 'locked': user['locked']})
+
+@app.route('/api/main-admin/send-email', methods=['POST'])
+@token_required
+def main_admin_send_email():
+    """Send email to selected users"""
+    data = request.json
+    user_ids = data.get('userIds', [])
+    subject = data.get('subject', '')
+    message = data.get('message', '')
+    
+    users = load_json('users.json')
+    emails = load_json('emails.json')
+    
+    # Log emails (in production, integrate with email service like SendGrid, Mailgun, etc.)
+    for user_id in user_ids:
+        user = next((u for u in users if u['id'] == user_id), None)
+        if user:
+            email_record = {
+                'id': len(emails) + 1,
+                'userId': user_id,
+                'userEmail': user['email'],
+                'userName': user['name'],
+                'subject': subject,
+                'message': message,
+                'status': 'sent',
+                'sentAt': datetime.now().isoformat()
+            }
+            emails.append(email_record)
+    
+    save_json('emails.json', emails)
+    return jsonify({'success': True, 'emailsSent': len(user_ids)})
+
+@app.route('/api/main-admin/create-payment', methods=['POST'])
+@token_required
+def main_admin_create_payment():
+    """Create a payment record for a user"""
+    data = request.json
+    payments = load_json('payments.json')
+    
+    payment = {
+        'id': len(payments) + 1,
+        'userId': data['userId'],
+        'amount': data['amount'],
+        'plan': data.get('plan', 'basic'),
+        'status': data.get('status', 'pending'),
+        'dueDate': data.get('dueDate'),
+        'createdAt': datetime.now().isoformat()
+    }
+    
+    payments.append(payment)
+    save_json('payments.json', payments)
+    return jsonify(payment), 201
+
+@app.route('/api/main-admin/payments/<int:payment_id>', methods=['PUT'])
+@token_required
+def main_admin_update_payment(payment_id):
+    """Update payment status"""
+    data = request.json
+    payments = load_json('payments.json')
+    payment = next((p for p in payments if p['id'] == payment_id), None)
+    
+    if not payment:
+        return jsonify({'error': 'Payment not found'}), 404
+    
+    payment['status'] = data.get('status', payment['status'])
+    if payment['status'] == 'paid':
+        payment['paidAt'] = datetime.now().isoformat()
+    
+    save_json('payments.json', payments)
+    return jsonify(payment)
+
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

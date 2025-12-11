@@ -70,16 +70,16 @@ export default function Subscription() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 py-12 px-6">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 py-6 md:py-12 px-4 md:px-6">
       <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12 animate-fade-in">
-          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+        <div className="text-center mb-8 md:mb-12 animate-fade-in">
+          <h1 className="text-3xl md:text-5xl font-bold mb-3 md:mb-4 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             Choose Your Plan
           </h1>
-          <p className="text-gray-600 text-lg">Select the perfect plan for your business needs</p>
+          <p className="text-gray-600 text-base md:text-lg">Select the perfect plan for your business needs</p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-6 md:mb-8">
           {plans.map((plan) => {
             const Icon = plan.icon;
             return (
@@ -100,23 +100,23 @@ export default function Subscription() {
                   </div>
                 )}
                 
-                <div className="flex items-center gap-3 mb-4">
-                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${plan.color} flex items-center justify-center`}>
-                    <Icon className="w-6 h-6 text-white" />
+                <div className="flex items-center gap-3 mb-3 md:mb-4">
+                  <div className={`w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br ${plan.color} flex items-center justify-center`}>
+                    <Icon className="w-5 h-5 md:w-6 md:h-6 text-white" />
                   </div>
-                  <h3 className="text-2xl font-bold">{plan.name}</h3>
+                  <h3 className="text-xl md:text-2xl font-bold">{plan.name}</h3>
                 </div>
                 
-                <div className="mb-6">
-                  <span className="text-4xl font-bold">KSH {plan.price}</span>
-                  <span className="text-gray-600">/month</span>
+                <div className="mb-4 md:mb-6">
+                  <span className="text-3xl md:text-4xl font-bold">KSH {plan.price}</span>
+                  <span className="text-gray-600 text-sm md:text-base">/month</span>
                 </div>
                 
-                <ul className="space-y-3">
+                <ul className="space-y-2 md:space-y-3">
                   {plan.features.map((feature, i) => (
                     <li key={i} className="flex items-start gap-2">
-                      <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                      <span className="text-sm">{feature}</span>
+                      <Check className="w-4 h-4 md:w-5 md:h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                      <span className="text-xs md:text-sm">{feature}</span>
                     </li>
                   ))}
                 </ul>
@@ -128,11 +128,11 @@ export default function Subscription() {
         <div className="text-center animate-fade-in">
           <button 
             onClick={handleSubscribe} 
-            className="btn-primary px-12 py-4 text-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
+            className="btn-primary w-full md:w-auto px-8 md:px-12 py-3 md:py-4 text-base md:text-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all"
           >
             Continue to Dashboard
           </button>
-          <p className="text-sm text-gray-500 mt-4">Start your journey today • Cancel anytime</p>
+          <p className="text-xs md:text-sm text-gray-500 mt-3 md:mt-4">Start your journey today • Cancel anytime</p>
         </div>
       </div>
     </div>

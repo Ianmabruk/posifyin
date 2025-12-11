@@ -24,10 +24,10 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateUser = async (userData) => {
-    // Update user in backend
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5001/api/users/${userData.id}`, {
+      const API_URL = window.location.hostname === 'localhost' ? 'http://localhost:5001/api' : '/api';
+      const response = await fetch(`${API_URL}/users/${userData.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -38,7 +38,6 @@ export const AuthProvider = ({ children }) => {
       
       const data = await response.json();
       
-      // Update token and user with response
       if (data.token) {
         localStorage.setItem('token', data.token);
       }
