@@ -686,5 +686,125 @@ def generate_code():
     code = f"{prefix}{next_num:03d}"
     return jsonify({'code': code})
 
+@app.route('/api/upload-image', methods=['POST'])
+@token_required
+def upload_image():
+    """Handle base64 image uploads for products and profiles"""
+    data = request.json
+    image_data = data.get('image')  # Base64 encoded image
+    image_type = data.get('type', 'product')  # 'product', 'profile', 'logo'
+    
+    # Store image data (in production, you'd save to file system or cloud storage)
+    # For now, we'll just return the base64 data back
+    return jsonify({'imageUrl': image_data, 'type': image_type})
+
+# Main Admin Routes
+@app.route('/api/main-admin/users', methods=['GET'])
+@token_required
+def main_admin_get_users():
+    """Get all users with payment info for main admin"""
+    users = load_json('users.json')
+    # Add locked field if not present
+    for user in users:
+        if 'locked' not in user:
+            user['locked'] = False
+    save_json('users.json', users)
+    return jsonify([{k: v for k, v in u.items() if k != 'password'} for u in users])
+
+@app.route('/api/main-admin/payments', methods=['GET'])
+@token_required
+def main_admin_get_payments():
+    """Get all payments for main admin"""
+    payments = load_json('payments.json')
+    return jsonify(payments)
+
+@app.route('/api/main-admin/users/<int:user_id>/lock', methods=['POST'])
+@token_required
+def main_admin_lock_user(user_id):
+    """Lock or unlock a user account"""
+    data = request.json
+    users = load_json('users.json')
+    user = next((u for u in users if u['id'] == user_id), None)
+    
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    user['locked'] = data.get('locked', False)
+    if user['locked']:
+        user['active'] = False
+    
+    save_json('users.json', users)
+    return jsonify({'success': True, 'locked': user['locked']})
+
+@app.route('/api/main-admin/send-email', methods=['POST'])
+@token_required
+def main_admin_send_email():
+    """Send email to selected users"""
+    data = request.json
+    user_ids = data.get('userIds', [])
+    subject = data.get('subject', '')
+    message = data.get('message', '')
+    
+    users = load_json('users.json')
+    emails = load_json('emails.json')
+    
+    # Log emails (in production, integrate with email service like SendGrid, Mailgun, etc.)
+    for user_id in user_ids:
+        user = next((u for u in users if u['id'] == user_id), None)
+        if user:
+            email_record = {
+                'id': len(emails) + 1,
+                'userId': user_id,
+                'userEmail': user['email'],
+                'userName': user['name'],
+                'subject': subject,
+                'message': message,
+                'status': 'sent',
+                'sentAt': datetime.now().isoformat()
+            }
+            emails.append(email_record)
+    
+    save_json('emails.json', emails)
+    return jsonify({'success': True, 'emailsSent': len(user_ids)})
+
+@app.route('/api/main-admin/create-payment', methods=['POST'])
+@token_required
+def main_admin_create_payment():
+    """Create a payment record for a user"""
+    data = request.json
+    payments = load_json('payments.json')
+    
+    payment = {
+        'id': len(payments) + 1,
+        'userId': data['userId'],
+        'amount': data['amount'],
+        'plan': data.get('plan', 'basic'),
+        'status': data.get('status', 'pending'),
+        'dueDate': data.get('dueDate'),
+        'createdAt': datetime.now().isoformat()
+    }
+    
+    payments.append(payment)
+    save_json('payments.json', payments)
+    return jsonify(payment), 201
+
+@app.route('/api/main-admin/payments/<int:payment_id>', methods=['PUT'])
+@token_required
+def main_admin_update_payment(payment_id):
+    """Update payment status"""
+    data = request.json
+    payments = load_json('payments.json')
+    payment = next((p for p in payments if p['id'] == payment_id), None)
+    
+    if not payment:
+        return jsonify({'error': 'Payment not found'}), 404
+    
+    payment['status'] = data.get('status', payment['status'])
+    if payment['status'] == 'paid':
+        payment['paidAt'] = datetime.now().isoformat()
+    
+    save_json('payments.json', payments)
+    return jsonify(payment)
+
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

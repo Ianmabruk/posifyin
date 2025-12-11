@@ -7,8 +7,18 @@ export default function Inventory() {
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [expandedRow, setExpandedRow] = useState(null);
   const [newProduct, setNewProduct] = useState({
+    name: '',
+    price: '',
+    cost: '',
+    quantity: '',
+    unit: 'pcs',
+    category: 'raw',
+    expenseOnly: false
+  });
+  const [editProduct, setEditProduct] = useState({
     name: '',
     price: '',
     cost: '',
@@ -37,6 +47,23 @@ export default function Inventory() {
     });
     setNewProduct({ name: '', price: '', cost: '', quantity: '', unit: 'pcs', category: 'raw', expenseOnly: false });
     setShowAddModal(false);
+    loadProducts();
+  };
+
+  const handleEditProduct = async (e) => {
+    e.preventDefault();
+    const originalProduct = products.find(p => p.id === editProduct.id);
+    if (parseFloat(editProduct.price) < originalProduct.price) {
+      alert('You cannot lower prices, only increase.');
+      return;
+    }
+    await productsApi.update(editProduct.id, {
+      ...editProduct,
+      price: parseFloat(editProduct.price),
+      cost: parseFloat(editProduct.cost),
+      quantity: parseFloat(editProduct.quantity)
+    });
+    setShowEditModal(false);
     loadProducts();
   };
 
@@ -217,7 +244,13 @@ export default function Inventory() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <button className="p-2 hover:bg-blue-50 rounded-lg text-blue-600 transition-colors">
+                          <button
+                            onClick={() => {
+                              setEditProduct(product);
+                              setShowEditModal(true);
+                            }}
+                            className="p-2 hover:bg-blue-50 rounded-lg text-blue-600 transition-colors"
+                          >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button 

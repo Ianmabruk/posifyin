@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { 
-  LayoutDashboard, ShoppingBag, Package, Layers, TrendingDown, 
-  Users, Settings, LogOut, Menu, X, ExternalLink, Clock 
+import {
+  LayoutDashboard, ShoppingBag, Package, Layers, TrendingDown,
+  Users, Settings, LogOut, Menu, X, ExternalLink, Clock, Bell, DollarSign, Tag, CreditCard
 } from 'lucide-react';
 import Overview from './Overview';
 import Inventory from './Inventory';
@@ -13,12 +13,38 @@ import Expenses from './Expenses';
 import UserManagement from './UserManagement';
 import TimeTracking from './TimeTracking';
 import SettingsPage from './SettingsPage';
+import ServiceFees from './ServiceFees';
+import RemindersManager from './RemindersManager';
+import Discounts from './Discounts';
+import CreditRequests from './CreditRequests';
+import ReminderModal from '../../components/ReminderModal';
+import ScreenLock from '../../components/ScreenLock';
+import useInactivity from '../../hooks/useInactivity';
+import { settings as settingsApi } from '../../services/api';
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showReminderModal, setShowReminderModal] = useState(false);
+  const [isLocked, unlock] = useInactivity(45000); // 45 seconds
+  const [appSettings, setAppSettings] = useState({});
+
+  useEffect(() => {
+    // Show reminder modal on login
+    setShowReminderModal(true);
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const data = await settingsApi.get();
+      setAppSettings(data);
+    } catch (error) {
+      console.error('Failed to load settings:', error);
+    }
+  };
 
   const menuItems = [
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard, path: '/admin' },
@@ -28,6 +54,10 @@ export default function AdminDashboard() {
     { id: 'expenses', label: 'Expenses', icon: TrendingDown, path: '/admin/expenses' },
     { id: 'users', label: 'Users', icon: Users, path: '/admin/users' },
     { id: 'time', label: 'Time Tracking', icon: Clock, path: '/admin/time' },
+    { id: 'reminders', label: 'Reminders', icon: Bell, path: '/admin/reminders' },
+    { id: 'service-fees', label: 'Service Fees', icon: DollarSign, path: '/admin/service-fees' },
+    { id: 'discounts', label: 'Discounts', icon: Tag, path: '/admin/discounts' },
+    { id: 'credit-requests', label: 'Credit Requests', icon: CreditCard, path: '/admin/credit-requests' },
     { id: 'settings', label: 'Settings', icon: Settings, path: '/admin/settings' }
   ];
 
@@ -128,12 +158,26 @@ export default function AdminDashboard() {
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/recipes" element={<Recipes />} />
             <Route path="/expenses" element={<Expenses />} />
+            <Route path="/reminders" element={<RemindersManager />} />
+            <Route path="/service-fees" element={<ServiceFees />} />
+            <Route path="/discounts" element={<Discounts />} />
+            <Route path="/credit-requests" element={<CreditRequests />} />
             <Route path="/users" element={<UserManagement />} />
             <Route path="/time" element={<TimeTracking />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </main>
       </div>
+
+      {/* Reminder Modal */}
+      {showReminderModal && (
+        <ReminderModal onClose={() => setShowReminderModal(false)} />
+      )}
+
+      {/* Screen Lock */}
+      {isLocked && (
+        <ScreenLock onUnlock={unlock} logo={appSettings.logo} />
+      )}
     </div>
   );
 }
