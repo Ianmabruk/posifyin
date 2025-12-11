@@ -62,21 +62,25 @@ export default function Subscription() {
         active: true 
       };
       
-      // Update user in context
-      await updateUser(updatedUser);
-      
-      // Also force update localStorage to ensure persistence
+      // Update localStorage first
       localStorage.setItem('user', JSON.stringify(updatedUser));
       
-      // Wait longer to ensure state is fully synced
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Use href instead of replace to force full page reload
-      if (role === 'admin') {
-        window.location.href = '/admin';
-      } else {
-        window.location.href = '/cashier';
+      // Update user in context
+      try {
+        await updateUser(updatedUser);
+      } catch (err) {
+        console.warn('Backend update failed, using local storage:', err);
       }
+      
+      // Simple redirect without complex timing
+      const targetPath = role === 'admin' ? '/admin' : '/cashier';
+      navigate(targetPath);
+      
+      // Force reload after navigation to ensure clean state
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
+      
     } catch (error) {
       console.error('Subscription error:', error);
       alert('Failed to update subscription. Please try again.');

@@ -22,15 +22,10 @@ function ProtectedRoute({ children, adminOnly = false }) {
   
   if (!user) return <Navigate to="/" replace />;
   
-  // If user has ultra plan, they should be admin
-  if (user.plan === 'ultra' && user.role !== 'admin') {
-    const updatedUser = { ...user, role: 'admin', active: true };
-    localStorage.setItem('user', JSON.stringify(updatedUser));
-    window.location.reload();
-    return null;
-  }
+  // Allow admin access if user has ultra plan OR admin role
+  const isAdmin = user.role === 'admin' || user.plan === 'ultra';
   
-  if (adminOnly && user.role !== 'admin') return <Navigate to="/cashier" replace />;
+  if (adminOnly && !isAdmin) return <Navigate to="/cashier" replace />;
   
   return children;
 }
@@ -49,18 +44,8 @@ function DashboardRouter() {
   // Redirect based on role and subscription
   if (!user?.active) return <Navigate to="/subscription" replace />;
   
-  // Ultra plan users should be admin
-  if (user.plan === 'ultra') {
-    if (user.role !== 'admin') {
-      const updatedUser = { ...user, role: 'admin', active: true };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      window.location.reload();
-      return null;
-    }
-    return <Navigate to="/admin" replace />;
-  }
-  
-  if (user.role === 'admin') {
+  // Ultra plan users go to admin, basic users go to cashier
+  if (user.plan === 'ultra' || user.role === 'admin') {
     return <Navigate to="/admin" replace />;
   }
   
