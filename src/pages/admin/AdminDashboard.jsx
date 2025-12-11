@@ -23,7 +23,7 @@ import useInactivity from '../../hooks/useInactivity';
 import { settings as settingsApi } from '../../services/api';
 
 export default function AdminDashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -32,10 +32,19 @@ export default function AdminDashboard() {
   const [appSettings, setAppSettings] = useState({});
 
   useEffect(() => {
+    // Verify user has admin access
+    if (!loading && user) {
+      // Force update user role if needed
+      if (user.plan === 'ultra' && user.role !== 'admin') {
+        const updatedUser = { ...user, role: 'admin', active: true };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      }
+    }
+    
     // Show reminder modal on login
     setShowReminderModal(true);
     loadSettings();
-  }, []);
+  }, [user, loading]);
 
   const loadSettings = async () => {
     try {

@@ -7,6 +7,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import CashierPOS from './pages/cashier/CashierPOS';
 import CashierSettings from './pages/cashier/CashierSettings';
 import MainAdmin from './pages/MainAdmin';
+import DebugUser from './components/DebugUser';
 
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user, loading } = useAuth();
@@ -19,8 +20,17 @@ function ProtectedRoute({ children, adminOnly = false }) {
     );
   }
   
-  if (!user) return <Navigate to="/" />;
-  if (adminOnly && user.role !== 'admin') return <Navigate to="/cashier" />;
+  if (!user) return <Navigate to="/" replace />;
+  
+  // If user has ultra plan, they should be admin
+  if (user.plan === 'ultra' && user.role !== 'admin') {
+    const updatedUser = { ...user, role: 'admin', active: true };
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    window.location.reload();
+    return null;
+  }
+  
+  if (adminOnly && user.role !== 'admin') return <Navigate to="/cashier" replace />;
   
   return children;
 }
@@ -39,6 +49,17 @@ function DashboardRouter() {
   // Redirect based on role and subscription
   if (!user?.active) return <Navigate to="/subscription" replace />;
   
+  // Ultra plan users should be admin
+  if (user.plan === 'ultra') {
+    if (user.role !== 'admin') {
+      const updatedUser = { ...user, role: 'admin', active: true };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      window.location.reload();
+      return null;
+    }
+    return <Navigate to="/admin" replace />;
+  }
+  
   if (user.role === 'admin') {
     return <Navigate to="/admin" replace />;
   }
@@ -50,6 +71,7 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <DebugUser />
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Auth />} />

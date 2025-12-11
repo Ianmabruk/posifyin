@@ -62,16 +62,21 @@ export default function Subscription() {
         active: true 
       };
       
+      // Update user in context
       await updateUser(updatedUser);
       
-      // Force reload to ensure context is fully updated
-      setTimeout(() => {
-        if (role === 'admin') {
-          window.location.replace('/admin');
-        } else {
-          window.location.replace('/cashier');
-        }
-      }, 1000);
+      // Also force update localStorage to ensure persistence
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      
+      // Wait longer to ensure state is fully synced
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Use href instead of replace to force full page reload
+      if (role === 'admin') {
+        window.location.href = '/admin';
+      } else {
+        window.location.href = '/cashier';
+      }
     } catch (error) {
       console.error('Subscription error:', error);
       alert('Failed to update subscription. Please try again.');
