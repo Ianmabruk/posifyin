@@ -16,7 +16,9 @@ export default function Inventory() {
     quantity: '',
     unit: 'pcs',
     category: 'raw',
-    expenseOnly: false
+    expenseOnly: false,
+    image: '',
+    visibleToCashier: true
   });
   const [editProduct, setEditProduct] = useState({
     name: '',
@@ -25,7 +27,9 @@ export default function Inventory() {
     quantity: '',
     unit: 'pcs',
     category: 'raw',
-    expenseOnly: false
+    expenseOnly: false,
+    image: '',
+    visibleToCashier: true
   });
 
   useEffect(() => {
@@ -50,9 +54,10 @@ export default function Inventory() {
       ...newProduct,
       price: parseFloat(newProduct.price),
       cost: parseFloat(newProduct.cost),
-      quantity: parseFloat(newProduct.quantity)
+      quantity: parseFloat(newProduct.quantity),
+      visibleToCashier: !newProduct.expenseOnly && newProduct.visibleToCashier
     });
-    setNewProduct({ name: '', price: '', cost: '', quantity: '', unit: 'pcs', category: 'raw', expenseOnly: false });
+    setNewProduct({ name: '', price: '', cost: '', quantity: '', unit: 'pcs', category: 'raw', expenseOnly: false, image: '', visibleToCashier: true });
     setShowAddModal(false);
     loadProducts();
   };
@@ -346,6 +351,13 @@ export default function Inventory() {
                 onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
                 required
               />
+              <input
+                type="url"
+                placeholder="Image URL (optional)"
+                className="input"
+                value={newProduct.image}
+                onChange={(e) => setNewProduct({ ...newProduct, image: e.target.value })}
+              />
               <div className="grid grid-cols-2 gap-4">
                 <input
                   type="number"
@@ -396,14 +408,26 @@ export default function Inventory() {
                 <option value="raw">Raw Material</option>
                 <option value="finished">Finished Product</option>
               </select>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={newProduct.expenseOnly}
-                  onChange={(e) => setNewProduct({ ...newProduct, expenseOnly: e.target.checked })}
-                />
-                <span className="text-sm">Expense Only (Hidden from cashier)</span>
-              </label>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={newProduct.expenseOnly}
+                    onChange={(e) => setNewProduct({ ...newProduct, expenseOnly: e.target.checked, visibleToCashier: !e.target.checked })}
+                  />
+                  <span className="text-sm">Expense Only (Hidden from cashier)</span>
+                </label>
+                {!newProduct.expenseOnly && (
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={newProduct.visibleToCashier}
+                      onChange={(e) => setNewProduct({ ...newProduct, visibleToCashier: e.target.checked })}
+                    />
+                    <span className="text-sm">Visible to Cashier</span>
+                  </label>
+                )}
+              </div>
               <div className="flex gap-2">
                 <button type="submit" className="btn-primary flex-1">Add Product</button>
                 <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary">Cancel</button>

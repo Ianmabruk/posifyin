@@ -65,7 +65,9 @@ export default function CashierPOS() {
       salesApi.getAll(),
       stats.get()
     ]);
-    setProductList(products);
+    // Filter products visible to cashier
+    const visibleProducts = products.filter(p => p.visibleToCashier !== false && !p.expenseOnly);
+    setProductList(visibleProducts);
     setSalesData(sales.reverse());
     setStatsData(statistics);
   };
