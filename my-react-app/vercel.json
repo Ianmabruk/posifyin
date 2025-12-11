@@ -1,4 +1,9 @@
 {
+  "buildCommand": "cd my-react-app && npm run build",
+  "outputDirectory": "my-react-app/dist",
+  "installCommand": "cd my-react-app && npm install",
+  "devCommand": "cd my-react-app && npm run dev",
+  "framework": null,
   "rewrites": [
     {
       "source": "/api/:path*",
@@ -8,9 +13,5 @@
       "source": "/(.*)",
       "destination": "/index.html"
     }
-  ],
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "installCommand": "npm install",
-  "framework": "vite"
+  ]
 }
