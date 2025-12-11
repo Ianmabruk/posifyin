@@ -351,13 +351,37 @@ export default function Inventory() {
                 onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
                 required
               />
-              <input
-                type="url"
-                placeholder="Image URL (optional)"
-                className="input"
-                value={newProduct.image}
-                onChange={(e) => setNewProduct({ ...newProduct, image: e.target.value })}
-              />
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Product Image</label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    placeholder="Image URL"
+                    className="input flex-1"
+                    value={newProduct.image}
+                    onChange={(e) => setNewProduct({ ...newProduct, image: e.target.value })}
+                  />
+                  <span className="text-sm text-gray-500 self-center">or</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="input flex-1"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setNewProduct({ ...newProduct, image: reader.result });
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                </div>
+                {newProduct.image && (
+                  <img src={newProduct.image} alt="Preview" className="w-20 h-20 object-cover rounded" />
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <input
                   type="number"
