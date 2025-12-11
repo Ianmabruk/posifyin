@@ -1,0 +1,17 @@
+backend:
+  name: git-gateway
+  branch: main
+
+media_folder: "public/uploads"
+public_folder: "/uploads"
+
+collections:
+  - name: "pages"
+    label: "Pages"
+    files:
+      - file: "src/pages/Landing.jsx"
+        label: "Landing Page"
+        name: "landing"
+        fields:
+          - {label: Title, name: title, widget: string}
+          - {label: Body, name: body, widget: markdown}

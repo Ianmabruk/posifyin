@@ -26,16 +26,24 @@ function ProtectedRoute({ children, adminOnly = false }) {
 }
 
 function DashboardRouter() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   
-  // Redirect based on role and subscription
-  if (!user.active) return <Navigate to="/subscription" />;
-  
-  if (user.role === 'admin') {
-    return <Navigate to="/admin" />;
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
   }
   
-  return <Navigate to="/cashier" />;
+  // Redirect based on role and subscription
+  if (!user?.active) return <Navigate to="/subscription" replace />;
+  
+  if (user.role === 'admin') {
+    return <Navigate to="/admin" replace />;
+  }
+  
+  return <Navigate to="/cashier" replace />;
 }
 
 function App() {

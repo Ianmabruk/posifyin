@@ -36,6 +36,10 @@ export const AuthProvider = ({ children }) => {
         body: JSON.stringify(userData)
       });
       
+      if (!response.ok) {
+        throw new Error('Failed to update user');
+      }
+      
       const data = await response.json();
       
       if (data.token) {
@@ -44,9 +48,15 @@ export const AuthProvider = ({ children }) => {
       if (data.user) {
         localStorage.setItem('user', JSON.stringify(data.user));
         setUser(data.user);
+        
+        // Force a small delay to ensure state is synced
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
+      
+      return data;
     } catch (error) {
       console.error('Failed to update user:', error);
+      throw error;
     }
   };
 

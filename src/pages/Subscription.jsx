@@ -50,23 +50,32 @@ export default function Subscription() {
   ];
 
   const handleSubscribe = async () => {
-    const plan = plans.find(p => p.id === selected);
-    const role = selected === 'ultra' ? 'admin' : 'cashier';
-    
-    const updatedUser = { 
-      ...user, 
-      role, 
-      plan: selected, 
-      price: plan.price, 
-      active: true 
-    };
-    
-    await updateUser(updatedUser);
-    
-    // Small delay to ensure token is updated
-    setTimeout(() => {
-      window.location.href = role === 'admin' ? '/admin' : '/cashier';
-    }, 500);
+    try {
+      const plan = plans.find(p => p.id === selected);
+      const role = selected === 'ultra' ? 'admin' : 'cashier';
+      
+      const updatedUser = { 
+        ...user, 
+        role, 
+        plan: selected, 
+        price: plan.price, 
+        active: true 
+      };
+      
+      await updateUser(updatedUser);
+      
+      // Force reload to ensure context is fully updated
+      setTimeout(() => {
+        if (role === 'admin') {
+          window.location.replace('/admin');
+        } else {
+          window.location.replace('/cashier');
+        }
+      }, 1000);
+    } catch (error) {
+      console.error('Subscription error:', error);
+      alert('Failed to update subscription. Please try again.');
+    }
   };
 
   return (
