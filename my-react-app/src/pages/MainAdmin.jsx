@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { 
-  Users, DollarSign, Mail, Lock, Unlock, CheckCircle, XCircle, 
+import {
+  Users, DollarSign, Mail, Lock, Unlock, CheckCircle, XCircle,
   AlertTriangle, TrendingUp, Calendar, Search, Filter, Send
 } from 'lucide-react';
+import { getLocalUsers } from '../utils/dataSync';
 
 export default function MainAdmin() {
   const [users, setUsers] = useState([]);
@@ -31,8 +32,9 @@ export default function MainAdmin() {
     try {
       const token = localStorage.getItem('token');
       const API_URL = import.meta.env.PROD ? '/api' : 'http://localhost:5001/api';
-      
+
       // Load users
+      let usersLoaded = false;
       try {
         const usersRes = await fetch(`${API_URL}/main-admin/users`, {
           headers: { Authorization: `Bearer ${token}` }
@@ -40,6 +42,7 @@ export default function MainAdmin() {
         if (usersRes.ok) {
           const usersData = await usersRes.json();
           setUsers(usersData);
+          usersLoaded = true;
         } else {
           // Fallback: Load from regular users endpoint
           const fallbackRes = await fetch(`${API_URL}/users`, {
@@ -48,12 +51,17 @@ export default function MainAdmin() {
           if (fallbackRes.ok) {
             const usersData = await fallbackRes.json();
             setUsers(usersData);
+            usersLoaded = true;
           }
         }
       } catch (err) {
+        console.warn('Backend not available for users:', err);
+      }
 
-
-        setUsers([]);
+      // If no users loaded from backend, use local users
+      if (!usersLoaded) {
+        const localUsers = getLocalUsers();
+        setUsers(localUsers);
       }
 
       // Load payments
@@ -256,10 +264,11 @@ export default function MainAdmin() {
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     if (filter === 'all') return matchesSearch;
     if (filter === 'active') return matchesSearch && user.active && !user.locked;
     if (filter === 'locked') return matchesSearch && user.locked;
+    if (filter === 'trial') return matchesSearch && (!user.active || !user.plan);
     if (filter === 'pending-payment') {
       const userPayments = payments.filter(p => p.userId === user.id && p.status === 'pending');
       return matchesSearch && userPayments.length > 0;
@@ -386,6 +395,7 @@ export default function MainAdmin() {
                 <option value="all">All Users</option>
                 <option value="active">Active</option>
                 <option value="locked">Locked</option>
+                <option value="trial">Free Trial</option>
                 <option value="pending-payment">Pending Payment</option>
                 <option value="overdue">Overdue</option>
               </select>

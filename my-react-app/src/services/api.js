@@ -93,6 +93,37 @@ const request = async (endpoint, options = {}) => {
       }
     }
 
+    // After successful backend operation, try to sync any pending local data
+    if (options.method === 'POST' || options.method === 'PUT' || options.method === 'DELETE') {
+      // Run sync in background to avoid blocking the response
+      setTimeout(async () => {
+        try {
+          const backendAvailable = await isBackendAvailable();
+          if (backendAvailable) {
+            // Sync pending local data for this data type
+            const localData = loadData(dataKey);
+            if (localData && Array.isArray(localData)) {
+              for (const item of localData) {
+                if (item.pendingSync) {
+                  try {
+                    await syncDataToBackend(dataKey, item);
+                    // Remove pendingSync flag
+                    item.pendingSync = false;
+                  } catch (syncError) {
+                    console.warn(`Failed to sync ${dataKey} item:`, syncError);
+                  }
+                }
+              }
+              // Save updated data back to localStorage
+              saveData(dataKey, localData);
+            }
+          }
+        } catch (error) {
+          console.warn('Data sync failed:', error);
+        }
+      }, 100);
+    }
+
     return data;
   } catch (error) {
     // For auth endpoints, re-throw the error
@@ -162,31 +193,72 @@ export const auth = {
 export const products = {
   getAll: () => request('/products'),
   create: async (data) => {
-    const result = await request('/products', { method: 'POST', body: JSON.stringify(data) });
-    // Update localStorage after successful creation
-    const currentProducts = loadData('products');
-    currentProducts.push(result);
-    saveData('products', currentProducts);
-    return result;
+    try {
+      const result = await request('/products', { method: 'POST', body: JSON.stringify(data) });
+      // Update localStorage after successful creation
+      const currentProducts = loadData('products');
+      currentProducts.push(result);
+      saveData('products', currentProducts);
+      return result;
+    } catch (error) {
+      // If backend fails, save locally with pendingSync flag
+      console.warn('Backend not available, saving product locally:', error);
+      const currentProducts = loadData('products');
+      const localProduct = {
+        ...data,
+        id: Date.now(), // Generate temporary ID
+        pendingSync: true,
+        createdAt: new Date().toISOString()
+      };
+      currentProducts.push(localProduct);
+      saveData('products', currentProducts);
+      return localProduct;
+    }
   },
   update: async (id, data) => {
-    const result = await request(`/products/${id}`, { method: 'PUT', body: JSON.stringify(data) });
-    // Update localStorage after successful update
-    const currentProducts = loadData('products');
-    const index = currentProducts.findIndex(p => p.id === id);
-    if (index !== -1) {
-      currentProducts[index] = result;
-      saveData('products', currentProducts);
+    try {
+      const result = await request(`/products/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+      // Update localStorage after successful update
+      const currentProducts = loadData('products');
+      const index = currentProducts.findIndex(p => p.id === id);
+      if (index !== -1) {
+        currentProducts[index] = result;
+        saveData('products', currentProducts);
+      }
+      return result;
+    } catch (error) {
+      // If backend fails, update locally with pendingSync flag
+      console.warn('Backend not available, updating product locally:', error);
+      const currentProducts = loadData('products');
+      const index = currentProducts.findIndex(p => p.id === id);
+      if (index !== -1) {
+        currentProducts[index] = { ...currentProducts[index], ...data, pendingSync: true };
+        saveData('products', currentProducts);
+        return currentProducts[index];
+      }
+      throw error;
     }
-    return result;
   },
   delete: async (id) => {
-    const result = await request(`/products/${id}`, { method: 'DELETE' });
-    // Update localStorage after successful deletion
-    const currentProducts = loadData('products');
-    const filteredProducts = currentProducts.filter(p => p.id !== id);
-    saveData('products', filteredProducts);
-    return result;
+    try {
+      const result = await request(`/products/${id}`, { method: 'DELETE' });
+      // Update localStorage after successful deletion
+      const currentProducts = loadData('products');
+      const filteredProducts = currentProducts.filter(p => p.id !== id);
+      saveData('products', filteredProducts);
+      return result;
+    } catch (error) {
+      // If backend fails, mark locally as deleted with pendingSync flag
+      console.warn('Backend not available, marking product for deletion locally:', error);
+      const currentProducts = loadData('products');
+      const index = currentProducts.findIndex(p => p.id === id);
+      if (index !== -1) {
+        currentProducts[index] = { ...currentProducts[index], pendingDelete: true, pendingSync: true };
+        saveData('products', currentProducts);
+        return { success: true, message: 'Product marked for deletion' };
+      }
+      throw error;
+    }
   }
 };
 

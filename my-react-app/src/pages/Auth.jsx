@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { syncUserToBackend, isBackendAvailable } from '../utils/dataSync';
 import { Mail, Lock, User } from 'lucide-react';
 
 export default function Auth() {
@@ -98,14 +99,25 @@ export default function Auth() {
       
 
       // If no token, this might be client-side auth, generate one
-      const token = res.token || btoa(JSON.stringify({ 
-        id: res.user.id, 
-        email: res.user.email, 
+      const token = res.token || btoa(JSON.stringify({
+        id: res.user.id,
+        email: res.user.email,
         role: res.user.role,
-        plan: res.user.plan 
+        plan: res.user.plan
       }));
-      
+
       login(token, res.user);
+
+      // Try to sync user data to backend if available
+      if (!res.token) {
+        // This was client-side auth, try to sync to backend
+        setTimeout(async () => {
+          const backendAvailable = await isBackendAvailable();
+          if (backendAvailable) {
+            await syncUserToBackend(res.user);
+          }
+        }, 1000); // Delay to allow login to complete
+      }
       
       // Handle different authentication flows
       if (res.user.needsPasswordSetup) {

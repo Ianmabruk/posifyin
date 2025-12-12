@@ -1,29 +1,20 @@
-# TODO: Enhance Product Cards and Cashier POS with Discounts and Admin Access
+# User Data Sync and Persistence Fix
 
-## Step 1: Enlarge Product Cards for Full Image Display ✅
-- Modify ProductCard.jsx to increase image height and adjust card layout
-- Ensure images fit properly without cropping
+## Current Issues
+- User signup/login data only stored locally, not pushed to backend
+- MainAdmin can't see users for lock/unlock or trial status tracking
+- Products and other data not persisting in deployed project
 
-## Step 2: Add Active Discounts Feature to Product Cards ✅
-- Integrate DiscountSelector component into ProductCard.jsx
-- Display active discounts on product cards
-- Show discounted prices when applicable
-
-## Step 3: Add Active Discounts Section to Cashier POS ✅
-- Modify CashierPOS.jsx to include a discounts sidebar or section
-- Fetch and display active discounts
-- Allow cashiers to apply discounts during checkout
-
-## Step 4: Enable Admin to Change Discounts
-- Ensure admin can manage discounts via existing Discounts.jsx
-- Add discount management controls to product cards if needed
-
-## Step 5: Allow Admin to Access Cashier POS by Choosing User ✅
-- Modify UserManagement.jsx to add "Access POS" button for cashiers
-- Create functionality to switch to live cashier POS session
-- Implement session management for admin access
-
-## Step 6: Testing and Integration ✅
-- Test all features work together
-- Ensure proper permissions and access controls
-- Verify UI responsiveness and user experience
+## Tasks
+- [x] Create data sync utility for localStorage to backend sync
+- [x] Modify Auth.jsx to sync local users to backend when available
+- [x] Update MainAdmin.jsx to show local users when backend unavailable
+- [x] Add trial status tracking (users without active plans/payments)
+- [x] Ensure lock/unlock functionality works for all users
+- [x] Fix data persistence for products and other entities
+- [x] Update api.js to handle data sync on successful backend calls
+- [ ] Test signup/login flow with backend sync
+- [ ] Verify users appear in MainAdmin dashboard
+- [ ] Test lock/unlock functionality
+- [ ] Verify trial status tracking
+- [ ] Test product creation and persistence
