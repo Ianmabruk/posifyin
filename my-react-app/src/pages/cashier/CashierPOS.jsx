@@ -324,37 +324,51 @@ export default function CashierPOS() {
 
 
 
+
             {/* Discount Display Area */}
             {cart.length > 0 && (
-              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 mb-4 shadow-sm">
                 <div className="flex items-center gap-2 mb-3">
-                  <Tag className="w-5 h-5 text-blue-600" />
-                  <h4 className="font-semibold text-blue-900">Active Discounts</h4>
+                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                    <Tag className="w-4 h-4 text-white" />
+                  </div>
+                  <h4 className="font-semibold text-blue-900">Available Discounts</h4>
                 </div>
                 <div className="space-y-2">
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center bg-white/50 rounded-lg p-2">
                     <span className="text-sm text-blue-700">Customer Loyalty Discount</span>
                     <span className="text-sm font-semibold text-blue-600">5%</span>
                   </div>
-                  <div className="flex justify-between items-center">
+                  <div className="flex justify-between items-center bg-white/50 rounded-lg p-2">
                     <span className="text-sm text-blue-700">Bulk Purchase Discount</span>
                     <span className="text-sm font-semibold text-blue-600">10%</span>
                   </div>
-                  <div className="border-t border-blue-200 pt-2">
+                  <div className="border-t-2 border-blue-300 pt-2 mt-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm font-semibold text-blue-900">Total Discount</span>
+                      <span className="text-sm font-bold text-blue-900">Total Discount Applied</span>
                       <span className="text-sm font-bold text-blue-600">
                         KSH {discountAmount.toLocaleString()} ({Math.round(discountRate * 100)}%)
                       </span>
                     </div>
                   </div>
                 </div>
-                <button 
-                  onClick={() => setShowDiscountModal(true)}
-                  className="w-full mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                >
-                  Request Additional Discount
-                </button>
+                
+                {/* Enhanced Request Discount Button */}
+                <div className="mt-4 p-3 bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <DollarSign className="w-4 h-4 text-orange-600" />
+                    <span className="text-sm font-medium text-orange-900">Need Additional Discount?</span>
+                  </div>
+                  <p className="text-xs text-orange-700 mb-3">
+                    Request manager approval for special discounts due to customer circumstances, bulk orders, or promotional events.
+                  </p>
+                  <button 
+                    onClick={() => setShowDiscountModal(true)}
+                    className="w-full px-4 py-3 bg-gradient-to-r from-orange-500 to-yellow-500 text-white rounded-lg hover:from-orange-600 hover:to-yellow-600 transition-all text-sm font-semibold shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                  >
+                    💰 Request Manager Discount Approval
+                  </button>
+                </div>
               </div>
             )}
 
@@ -508,11 +522,34 @@ export default function CashierPOS() {
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
+
                           <button 
                             onClick={async () => {
-                              if (confirm('Delete this product?')) {
-                                await productsApi.delete(product.id);
-                                loadData();
+                              if (confirm('Delete this product? This action cannot be undone.')) {
+                                try {
+                                  await productsApi.delete(product.id);
+                                  // Update local state immediately for better UX
+                                  setProductList(prevProducts => prevProducts.filter(p => p.id !== product.id));
+                                  alert('Product deleted successfully!');
+                                  loadData(); // Refresh to ensure sync
+                                } catch (error) {
+                                  console.error('Failed to delete product:', error);
+                                  
+                                  // Provide specific error messages
+                                  let errorMessage = 'Failed to delete product';
+                                  
+                                  if (error.message.includes('Failed to execute') || error.message.includes('JSON')) {
+                                    errorMessage = 'Network error. Please check your connection and try again.';
+                                  } else if (error.message.includes('401') || error.message.includes('unauthorized')) {
+                                    errorMessage = 'You are not authorized to delete this product.';
+                                  } else if (error.message.includes('404') || error.message.includes('not found')) {
+                                    errorMessage = 'Product not found. It may have been deleted already.';
+                                  } else if (error.message) {
+                                    errorMessage = `Failed to delete product: ${error.message}`;
+                                  }
+                                  
+                                  alert(errorMessage);
+                                }
                               }
                             }}
                             className="p-2 hover:bg-red-50 rounded-lg text-red-600"
@@ -692,66 +729,125 @@ export default function CashierPOS() {
         </div>
       )}
 
-      {/* Discount Request Modal */}
+
+      {/* Enhanced Discount Request Modal */}
       {showDiscountModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
-            <h3 className="text-xl font-bold mb-4">Request Discount</h3>
-            <form onSubmit={handleRequestDiscount} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Discount Type</label>
-                <select 
-                  className="input"
-                  value={discountForm.type}
-                  onChange={(e) => setDiscountForm({ ...discountForm, type: e.target.value })}
-                >
-                  <option value="percentage">Percentage (%)</option>
-                  <option value="fixed">Fixed Amount (KSH)</option>
-                </select>
+          <div className="bg-white rounded-xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-yellow-500 rounded-xl flex items-center justify-center">
+                <Tag className="w-6 h-6 text-white" />
               </div>
-              
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {discountForm.type === 'percentage' ? 'Discount Percentage' : 'Discount Amount (KSH)'}
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  placeholder={discountForm.type === 'percentage' ? '10' : '500'}
-                  className="input"
-                  value={discountForm.value}
-                  onChange={(e) => setDiscountForm({ ...discountForm, value: e.target.value })}
-                  required
-                />
+                <h3 className="text-xl font-bold text-gray-900">Request Manager Discount Approval</h3>
+                <p className="text-sm text-gray-600">Submit a discount request for manager review</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleRequestDiscount} className="space-y-5">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-semibold text-blue-900 mb-2">📋 Cart Summary</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-blue-700">Items in Cart:</span>
+                    <span className="font-semibold text-blue-900 ml-2">{cart.length}</span>
+                  </div>
+                  <div>
+                    <span className="text-blue-700">Current Subtotal:</span>
+                    <span className="font-semibold text-blue-900 ml-2">KSH {subtotal.toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-blue-700">Applied Discounts:</span>
+                    <span className="font-semibold text-green-600 ml-2">KSH {discountAmount.toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-blue-700">After Discounts:</span>
+                    <span className="font-semibold text-blue-900 ml-2">KSH {discountedSubtotal.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Discount Type</label>
+                  <select 
+                    className="input"
+                    value={discountForm.type}
+                    onChange={(e) => setDiscountForm({ ...discountForm, type: e.target.value })}
+                  >
+                    <option value="percentage">📊 Percentage (%)</option>
+                    <option value="fixed">💰 Fixed Amount (KSH)</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    {discountForm.type === 'percentage' ? 'Discount Percentage' : 'Discount Amount (KSH)'}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max={discountForm.type === 'percentage' ? '100' : subtotal.toString()}
+                    placeholder={discountForm.type === 'percentage' ? '10' : '500'}
+                    className="input"
+                    value={discountForm.value}
+                    onChange={(e) => setDiscountForm({ ...discountForm, value: e.target.value })}
+                    required
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Reason for Discount</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  🎯 Reason for Discount Request
+                </label>
                 <textarea
                   className="input"
-                  placeholder="Explain why this discount is needed..."
-                  rows="3"
+                  placeholder="Please provide detailed reasoning for this discount request. Examples: Customer loyalty, bulk purchase, damaged packaging, special occasion, competitor pricing, etc."
+                  rows="4"
                   value={discountForm.reason}
                   onChange={(e) => setDiscountForm({ ...discountForm, reason: e.target.value })}
                   required
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  💡 <strong>Tip:</strong> Be specific about customer circumstances or business reasons to help managers approve requests faster.
+                </p>
               </div>
 
-              <div className="bg-gray-50 rounded-lg p-3">
-                <h4 className="font-medium text-gray-900 mb-2">Cart Summary</h4>
-                <p className="text-sm text-gray-600">Items: {cart.length}</p>
-                <p className="text-sm text-gray-600">Subtotal: KSH {subtotal.toLocaleString()}</p>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <div className="flex items-start gap-2">
+                  <div className="w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-white text-xs font-bold">!</span>
+                  </div>
+                  <div className="text-sm">
+                    <p className="font-semibold text-yellow-800 mb-1">Important Notes:</p>
+                    <ul className="text-yellow-700 space-y-1 text-xs">
+                      <li>• Manager approval is required for all discount requests</li>
+
+
+
+                      <li>• Large discounts (greater than 20%) may require additional authorization</li>
+                      <li>• All requests are logged and monitored for compliance</li>
+                    </ul>
+                  </div>
+                </div>
               </div>
 
-              <div className="flex gap-2">
-                <button type="submit" className="btn-primary flex-1">Submit Request</button>
+              <div className="flex gap-3 pt-4 border-t border-gray-200">
+                <button 
+                  type="submit" 
+                  className="flex-1 btn-primary bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600 text-white font-semibold py-3 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all"
+                >
+                  📤 Submit Discount Request
+                </button>
                 <button 
                   type="button" 
                   onClick={() => {
                     setShowDiscountModal(false);
                     setDiscountForm({ type: 'percentage', value: '', reason: '', items: [] });
                   }} 
-                  className="btn-secondary"
+                  className="btn-secondary px-6"
                 >
                   Cancel
                 </button>

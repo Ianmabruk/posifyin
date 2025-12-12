@@ -119,22 +119,42 @@ export default function Inventory() {
     }
   };
 
+
   const handleDelete = async (id) => {
     try {
       if (!confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
         return;
       }
-      
 
       const result = await productsApi.delete(id);
       
-      await loadProducts();
+      // Update local state immediately for better UX
+      setProducts(prevProducts => prevProducts.filter(p => p.id !== id));
       
-      alert('Product deleted successfully!');
+      // Show success message
+      const successMessage = result?.message || 'Product deleted successfully!';
+      alert(successMessage);
+      
+      // Refresh products to ensure sync with backend
+      await loadProducts();
       
     } catch (error) {
       console.error('Failed to delete product:', error);
-      alert(`Failed to delete product: ${error.message || 'Unknown error'}`);
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to delete product';
+      
+      if (error.message.includes('Failed to execute') || error.message.includes('JSON')) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (error.message.includes('401') || error.message.includes('unauthorized')) {
+        errorMessage = 'You are not authorized to delete this product.';
+      } else if (error.message.includes('404') || error.message.includes('not found')) {
+        errorMessage = 'Product not found. It may have been deleted already.';
+      } else if (error.message) {
+        errorMessage = `Failed to delete product: ${error.message}`;
+      }
+      
+      alert(errorMessage);
     }
   };
 
