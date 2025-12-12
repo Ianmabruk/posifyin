@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { products as productsApi, sales as salesApi, stats } from '../../services/api';
-import { ShoppingCart, Trash2, LogOut, Plus, Minus, Search, DollarSign, TrendingUp, Package, BarChart3, Edit2, Settings } from 'lucide-react';
+import { ShoppingCart, Trash2, LogOut, Plus, Minus, Search, DollarSign, TrendingUp, Package, BarChart3, Edit2, Settings, Tag } from 'lucide-react';
+import DiscountSelector from '../../components/DiscountSelector';
+import ProductCard from '../../components/ProductCard';
 
 export default function CashierPOS() {
   const { user, logout } = useAuth();
@@ -93,10 +95,14 @@ export default function CashierPOS() {
     setCart(cart.filter(item => item.id !== id));
   };
 
+
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const discountRate = 0.15; // 15% total discount
+  const discountAmount = subtotal * discountRate;
+  const discountedSubtotal = subtotal - discountAmount;
   const taxRate = 0.16; // 16% VAT
-  const taxAmount = taxInclusive ? 0 : subtotal * taxRate;
-  const total = subtotal + taxAmount;
+  const taxAmount = taxInclusive ? 0 : discountedSubtotal * taxRate;
+  const total = discountedSubtotal + taxAmount;
 
   const handleCheckout = async () => {
     if (cart.length === 0) return;
@@ -215,25 +221,17 @@ export default function CashierPOS() {
               </div>
             </div>
             
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {filteredProducts.map(product => (
-                <button
+                <ProductCard
                   key={product.id}
-                  onClick={() => addToCart(product)}
-                  className="card text-left hover:shadow-xl transition-all transform hover:scale-105 bg-gradient-to-br from-white to-gray-50"
-                  disabled={product.quantity === 0}
-                >
-                  <h3 className="font-semibold mb-2 text-gray-900">{product.name}</h3>
-                  <p className="text-xl font-bold text-green-600">KSH {product.price?.toLocaleString()}</p>
-                  {user?.permissions?.viewInventory && (
-                    <p className="text-xs text-gray-500 mt-2">
-                      Stock: {product.quantity || 0} {product.unit}
-                    </p>
-                  )}
-                  {product.quantity === 0 && (
-                    <span className="text-xs text-red-600 font-medium">Out of Stock</span>
-                  )}
-                </button>
+                  product={product}
+                  onAddToCart={addToCart}
+                  onRequestCredit={() => {}}
+                  showDiscounts={true}
+                />
               ))}
             </div>
           </div>
@@ -249,6 +247,7 @@ export default function CashierPOS() {
                 {cart.length} items
               </span>
             </div>
+
 
             <div className="flex-1 overflow-y-auto mb-6">
               {cart.length === 0 ? (
@@ -284,11 +283,49 @@ export default function CashierPOS() {
               )}
             </div>
 
+
+            {/* Discount Display Area */}
+            {cart.length > 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Tag className="w-5 h-5 text-blue-600" />
+                  <h4 className="font-semibold text-blue-900">Active Discounts</h4>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-blue-700">Customer Loyalty Discount</span>
+                    <span className="text-sm font-semibold text-blue-600">5%</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-blue-700">Bulk Purchase Discount</span>
+                    <span className="text-sm font-semibold text-blue-600">10%</span>
+                  </div>
+                  <div className="border-t border-blue-200 pt-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-semibold text-blue-900">Total Discount</span>
+                      <span className="text-sm font-bold text-blue-600">
+                        KSH {discountAmount.toLocaleString()} ({Math.round(discountRate * 100)}%)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+
             <div className="border-t border-gray-200 pt-4 space-y-4">
               <div className="space-y-2 border-t border-gray-200 pt-4">
                 <div className="flex justify-between text-sm">
                   <span>Subtotal:</span>
                   <span className="font-semibold">KSH {subtotal.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm text-blue-600">
+                  <span>Discount ({Math.round(discountRate * 100)}%):</span>
+                  <span className="font-semibold">-KSH {discountAmount.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Discounted Subtotal:</span>
+                  <span className="font-semibold">KSH {discountedSubtotal.toLocaleString()}</span>
                 </div>
                 {!taxInclusive && (
                   <div className="flex justify-between text-sm">

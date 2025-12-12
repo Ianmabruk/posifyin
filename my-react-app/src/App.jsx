@@ -7,7 +7,8 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import CashierPOS from './pages/cashier/CashierPOS';
 import CashierSettings from './pages/cashier/CashierSettings';
 import MainAdmin from './pages/MainAdmin';
-import DebugUser from './components/DebugUser';
+
+
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Loading component
@@ -106,12 +107,12 @@ function DashboardRouter() {
 }
 
 
+
 function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
         <BrowserRouter>
-          <DebugUser />
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Auth />} />

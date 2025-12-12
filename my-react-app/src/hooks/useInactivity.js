@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 
 export default function useInactivity(timeout = 45000) {
   const [isLocked, setIsLocked] = useState(false);
-  let timer;
+  const timerRef = useRef(null);
 
-  const resetTimer = () => {
-    clearTimeout(timer);
-    timer = setTimeout(() => setIsLocked(true), timeout);
-  };
+  const resetTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+    timerRef.current = setTimeout(() => setIsLocked(true), timeout);
+  }, [timeout]);
 
   useEffect(() => {
     const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
@@ -19,12 +21,19 @@ export default function useInactivity(timeout = 45000) {
     resetTimer();
 
     return () => {
-      clearTimeout(timer);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
       events.forEach(event => {
         document.removeEventListener(event, resetTimer, true);
       });
     };
-  }, []);
+  }, [resetTimer]);
 
-  return [isLocked, () => setIsLocked(false)];
+  const unlock = useCallback(() => {
+    setIsLocked(false);
+    resetTimer();
+  }, [resetTimer]);
+
+  return [isLocked, unlock];
 }

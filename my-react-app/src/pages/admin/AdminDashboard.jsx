@@ -28,8 +28,8 @@ export default function AdminDashboard() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showReminderModal, setShowReminderModal] = useState(false);
-  const [isLocked, unlock] = useInactivity(45000); // 45 seconds
   const [appSettings, setAppSettings] = useState({});
+  const [isLocked, unlock] = useInactivity(45000); // 45 seconds
 
 
   useEffect(() => {
@@ -72,9 +72,14 @@ export default function AdminDashboard() {
     ensureUserData();
     setTimeout(ensureUserData, 100);
     
-    // Show reminder modal on login
-    setShowReminderModal(true);
+    // Show reminder modal on login (with delay to ensure everything is loaded)
+    const timer = setTimeout(() => {
+      setShowReminderModal(true);
+    }, 1000);
+    
     loadSettings();
+    
+    return () => clearTimeout(timer);
   }, []);
 
   const loadSettings = async () => {

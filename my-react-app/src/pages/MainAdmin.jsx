@@ -51,7 +51,8 @@ export default function MainAdmin() {
           }
         }
       } catch (err) {
-        console.log('Users endpoint not available, using empty data');
+
+
         setUsers([]);
       }
 

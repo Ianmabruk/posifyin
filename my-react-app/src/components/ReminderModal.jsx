@@ -9,6 +9,7 @@ export default function ReminderModal({ onClose }) {
     fetchReminders();
   }, []);
 
+
   const fetchReminders = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -16,10 +17,26 @@ export default function ReminderModal({ onClose }) {
       const res = await fetch(`${API_URL}/reminders/today`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      
+      // Check if response is ok
+      if (!res.ok) {
+        console.error('API Error:', res.status, res.statusText);
+        setReminders([]);
+        return;
+      }
+      
       const data = await res.json();
-      setReminders(data);
+      
+      // Ensure data is an array
+      if (Array.isArray(data)) {
+        setReminders(data);
+      } else {
+        console.error('Expected array but got:', typeof data, data);
+        setReminders([]);
+      }
     } catch (error) {
       console.error('Failed to fetch reminders:', error);
+      setReminders([]);
     } finally {
       setLoading(false);
     }
@@ -40,7 +57,8 @@ export default function ReminderModal({ onClose }) {
     }
   };
 
-  if (loading || reminders.length === 0) return null;
+
+  if (loading) return null;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -51,23 +69,32 @@ export default function ReminderModal({ onClose }) {
             <X size={24} />
           </button>
         </div>
+
         <div className="p-6 overflow-y-auto max-h-[60vh]">
-          {reminders.map(reminder => (
-            <div key={reminder.id} className="mb-4 p-4 border-l-4 border-red-500 bg-red-50 rounded-lg flex justify-between items-center">
-              <div>
-                <p className="font-semibold text-gray-800">{reminder.customerName}</p>
-                <p className="text-sm text-gray-600">Product ID: {reminder.productId}</p>
-                <p className="text-xs text-gray-500">{reminder.frequency}</p>
-              </div>
-              <button
-                onClick={() => markFulfilled(reminder.id)}
-                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition"
-              >
-                <CheckCircle size={18} />
-                Mark Done
-              </button>
+          {reminders.length === 0 ? (
+            <div className="text-center py-12">
+              <AlertCircle className="mx-auto h-12 w-12 text-green-500 mb-4" />
+              <p className="text-gray-600 text-lg">No reminders for today</p>
+              <p className="text-gray-400 text-sm mt-2">You're all caught up!</p>
             </div>
-          ))}
+          ) : (
+            reminders.map(reminder => (
+              <div key={reminder.id} className="mb-4 p-4 border-l-4 border-red-500 bg-red-50 rounded-lg flex justify-between items-center">
+                <div>
+                  <p className="font-semibold text-gray-800">{reminder.customerName}</p>
+                  <p className="text-sm text-gray-600">Product ID: {reminder.productId}</p>
+                  <p className="text-xs text-gray-500">{reminder.frequency}</p>
+                </div>
+                <button
+                  onClick={() => markFulfilled(reminder.id)}
+                  className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition"
+                >
+                  <CheckCircle size={18} />
+                  Mark Done
+                </button>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

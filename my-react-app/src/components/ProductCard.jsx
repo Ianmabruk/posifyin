@@ -1,12 +1,13 @@
-import { ShoppingCart, Package } from 'lucide-react';
+import { ShoppingCart, Package, Tag } from 'lucide-react';
+import DiscountSelector from './DiscountSelector';
 
-export default function ProductCard({ product, onAddToCart, onRequestCredit }) {
+export default function ProductCard({ product, onAddToCart, onRequestCredit, showDiscounts = false }) {
   return (
     <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition transform hover:-translate-y-1">
       {product.image ? (
-        <img src={product.image} alt={product.name} className="w-full h-48 object-cover" />
+        <img src={product.image} alt={product.name} className="w-full h-64 object-contain bg-gray-50" />
       ) : (
-        <div className="w-full h-48 bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
+        <div className="w-full h-64 bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
           <Package size={64} className="text-white" />
         </div>
       )}
@@ -17,8 +18,9 @@ export default function ProductCard({ product, onAddToCart, onRequestCredit }) {
         </div>
         <p className="text-gray-600 text-sm mb-2">{product.category}</p>
         {product.notes && <p className="text-gray-500 text-xs mb-3 italic">{product.notes}</p>}
+
         <div className="flex justify-between items-center mb-3">
-          <span className="text-2xl font-bold text-green-600">${product.price}</span>
+          <span className="text-2xl font-bold text-green-600">KSH {product.price?.toLocaleString()}</span>
           <span className="text-sm text-gray-500">{product.quantity} {product.unit}</span>
         </div>
         <div className="flex gap-2">

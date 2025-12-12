@@ -10,8 +10,36 @@ app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 app.config['SECRET_KEY'] = os.environ.get('JWT_SECRET', 'your-secret-key-change-in-production')
 
+
 DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 os.makedirs(DATA_DIR, exist_ok=True)
+
+# Initialize empty data files if they don't exist
+data_files = {
+    'users.json': [],
+    'products.json': [],
+    'sales.json': [],
+    'expenses.json': [],
+    'reminders.json': [],
+    'service_fees.json': [],
+    'discounts.json': [],
+    'credit_requests.json': [],
+    'settings.json': [],
+    'batches.json': [],
+    'production.json': [],
+    'price_history.json': [],
+    'time_entries.json': [],
+    'categories.json': [],
+    'payments.json': [],
+    'emails.json': []
+}
+
+for filename, default_data in data_files.items():
+    file_path = os.path.join(DATA_DIR, filename)
+    if not os.path.exists(file_path):
+        with open(file_path, 'w') as f:
+            json.dump(default_data, f, indent=2)
+        print(f"Created {filename} with default data")
 
 def load_json(filename):
     path = os.path.join(DATA_DIR, filename)
@@ -388,12 +416,17 @@ def stats():
         'productCount': len(products)
     })
 
+
 @app.route('/api/reminders', methods=['GET', 'POST'])
 @token_required
 def reminders():
     if request.method == 'GET':
         reminders = load_json('reminders.json')
         return jsonify(reminders)
+    
+    # POST - Only admins can create reminders
+    if request.user.get('role') != 'admin':
+        return jsonify({'error': 'Admin access required'}), 403
     
     data = request.json
     reminders = load_json('reminders.json')
@@ -405,6 +438,7 @@ def reminders():
         'days': data.get('days', []),
         'nextDate': data['nextDate'],
         'status': 'pending',
+        'createdBy': request.user.get('id'),
         'createdAt': datetime.now().isoformat()
     }
     reminders.append(reminder)
@@ -807,5 +841,5 @@ def main_admin_update_payment(payment_id):
     return jsonify(payment)
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5001))
+    port = int(os.environ.get('PORT', 5002))
     app.run(host='0.0.0.0', port=port, debug=False)

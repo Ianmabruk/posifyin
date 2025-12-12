@@ -96,14 +96,26 @@ export default function Auth() {
         throw new Error('Authentication failed. Please try again.');
       }
       
+
       // If no token, this might be client-side auth, generate one
       const token = res.token || btoa(JSON.stringify({ 
         id: res.user.id, 
         email: res.user.email, 
-        role: res.user.role 
+        role: res.user.role,
+        plan: res.user.plan 
       }));
       
       login(token, res.user);
+      
+      // Handle different authentication flows
+      if (res.user.needsPasswordSetup) {
+        // User needs to set password (cashier added by admin)
+        setNeedsPasswordSetup(true);
+        setFormData({ ...formData, email: res.user.email });
+        setError('');
+        setLoading(false);
+        return;
+      }
       
       // Cashiers added by admin go directly to cashier dashboard
       if (res.user.role === 'cashier' && res.user.addedByAdmin) {
@@ -115,10 +127,13 @@ export default function Auth() {
       if (!res.user.active || !res.user.plan) {
         navigate('/subscription');
       } else if (res.user.role === 'admin') {
+        // Admin always goes to admin dashboard
         navigate('/admin');
       } else if (res.user.role === 'cashier') {
+        // Cashiers go to cashier dashboard
         navigate('/cashier');
       } else {
+        // Fallback for unknown roles
         navigate('/dashboard');
       }
     } catch (err) {

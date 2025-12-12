@@ -18,6 +18,7 @@ export default function RemindersManager() {
     fetchProducts();
   }, []);
 
+
   const fetchReminders = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -25,12 +26,29 @@ export default function RemindersManager() {
       const res = await fetch(`${API_URL}/reminders`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      
+      // Check if response is ok
+      if (!res.ok) {
+        console.error('API Error:', res.status, res.statusText);
+        setReminders([]);
+        return;
+      }
+      
       const data = await res.json();
-      setReminders(data);
+      
+      // Ensure data is an array
+      if (Array.isArray(data)) {
+        setReminders(data);
+      } else {
+        console.error('Expected array but got:', typeof data, data);
+        setReminders([]);
+      }
     } catch (error) {
       console.error('Failed to fetch reminders:', error);
+      setReminders([]);
     }
   };
+
 
   const fetchProducts = async () => {
     try {
@@ -39,19 +57,37 @@ export default function RemindersManager() {
       const res = await fetch(`${API_URL}/products`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      
+      // Check if response is ok
+      if (!res.ok) {
+        console.error('API Error:', res.status, res.statusText);
+        setProducts([]);
+        return;
+      }
+      
       const data = await res.json();
-      setProducts(data);
+      
+      // Ensure data is an array
+      if (Array.isArray(data)) {
+        setProducts(data);
+      } else {
+        console.error('Expected array but got:', typeof data, data);
+        setProducts([]);
+      }
     } catch (error) {
       console.error('Failed to fetch products:', error);
+      setProducts([]);
     }
   };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
       const API_URL = import.meta.env.PROD ? '/api' : 'http://localhost:5001/api';
-      await fetch(`${API_URL}/reminders`, {
+      
+      const response = await fetch(`${API_URL}/reminders`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -59,25 +95,64 @@ export default function RemindersManager() {
         },
         body: JSON.stringify(formData)
       });
-      fetchReminders();
-      setShowForm(false);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Failed to create reminder:', errorData);
+        alert(`Failed to create reminder: ${errorData.error || 'Unknown error'}`);
+        return;
+
+      }
+      
+      const result = await response.json();
+      
+      // Reset form and refresh data
       setFormData({ customerName: '', productId: '', frequency: 'weekly', days: [], nextDate: '' });
+      setShowForm(false);
+      fetchReminders();
+      
+      alert('Reminder created successfully!');
     } catch (error) {
       console.error('Failed to create reminder:', error);
+      alert('Failed to create reminder. Please try again.');
     }
   };
 
+
   const deleteReminder = async (id) => {
     try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      // Only admin users can delete reminders
+      if (user.role !== 'admin') {
+        alert('Only administrators can delete reminders.');
+        return;
+      }
+      
+      if (!confirm('Are you sure you want to delete this reminder? This action cannot be undone.')) {
+        return;
+      }
+      
       const token = localStorage.getItem('token');
       const API_URL = import.meta.env.PROD ? '/api' : 'http://localhost:5001/api';
-      await fetch(`${API_URL}/reminders/${id}`, {
+      
+      const response = await fetch(`${API_URL}/reminders/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Failed to delete reminder:', errorData);
+        alert(`Failed to delete reminder: ${errorData.error || 'Unknown error'}`);
+        return;
+
+      }
       fetchReminders();
+      alert('Reminder deleted successfully!');
     } catch (error) {
       console.error('Failed to delete reminder:', error);
+      alert('Failed to delete reminder. Please try again.');
     }
   };
 

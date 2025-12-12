@@ -9,7 +9,9 @@ export default function Recipes() {
   const [newRecipe, setNewRecipe] = useState({
     name: '',
     price: '',
-    ingredients: []
+    ingredients: [],
+    image: '',
+    visibleToCashier: true
   });
 
   useEffect(() => {
@@ -25,13 +27,13 @@ export default function Recipes() {
   const addIngredient = () => {
     setNewRecipe({
       ...newRecipe,
-      ingredients: [...newRecipe.ingredients, { productId: '', quantity: '' }]
+      ingredients: [...newRecipe.ingredients, { name: '', quantity: '', unit: 'pcs' }]
     });
   };
 
   const updateIngredient = (index, field, value) => {
     const updated = [...newRecipe.ingredients];
-    updated[index][field] = field === 'quantity' ? parseFloat(value) : parseInt(value);
+    updated[index][field] = value;
     setNewRecipe({ ...newRecipe, ingredients: updated });
   };
 
@@ -44,33 +46,79 @@ export default function Recipes() {
 
   const calculateTotalCost = () => {
     return newRecipe.ingredients.reduce((total, ing) => {
-      const raw = rawProducts.find(p => p.id === parseInt(ing.productId));
+      // Find matching raw product by name (case-insensitive)
+      const raw = rawProducts.find(p =>
+        p.name.toLowerCase() === ing.name.toLowerCase()
+      );
       if (raw && ing.quantity) {
         const unitCost = raw.cost / raw.quantity;
-        return total + (unitCost * ing.quantity);
+        return total + (unitCost * parseFloat(ing.quantity));
       }
+      // For custom ingredients not in inventory, use a default cost of 0
+      // This allows recipes to be created even with custom ingredients
       return total;
     }, 0);
   };
 
   const handleCreateRecipe = async (e) => {
     e.preventDefault();
-    const totalCost = calculateTotalCost();
-    
-    await productsApi.create({
-      name: newRecipe.name,
-      price: parseFloat(newRecipe.price),
-      cost: totalCost,
-      quantity: 0,
-      unit: 'pcs',
-      category: 'composite',
-      recipe: newRecipe.ingredients.filter(ing => ing.productId && ing.quantity),
-      visibleToCashier: true
-    });
 
-    setNewRecipe({ name: '', price: '', ingredients: [] });
-    setShowCreateModal(false);
-    loadProducts();
+    // Validate ingredients (allow custom names)
+    const mappedIngredients = [];
+    for (const ing of newRecipe.ingredients) {
+      if (!ing.name || !ing.quantity) continue;
+
+      // Find matching raw product by name (case-insensitive)
+      const raw = rawProducts.find(p =>
+        p.name.toLowerCase() === ing.name.toLowerCase()
+      );
+
+      if (raw) {
+        // Use productId for known products
+        mappedIngredients.push({
+          productId: raw.id,
+          quantity: parseFloat(ing.quantity),
+          unit: ing.unit || 'pcs'
+        });
+      } else {
+        // For custom ingredients, store as text-based entries
+        mappedIngredients.push({
+          name: ing.name,
+          quantity: parseFloat(ing.quantity),
+          unit: ing.unit || 'pcs'
+        });
+      }
+    }
+
+    if (mappedIngredients.length === 0) {
+      alert('Please add at least one ingredient');
+      return;
+    }
+
+    const totalCost = calculateTotalCost();
+
+    try {
+      await productsApi.create({
+        name: newRecipe.name,
+        price: parseFloat(newRecipe.price),
+        cost: totalCost,
+        quantity: 0,
+        unit: 'pcs',
+        category: 'composite',
+        recipe: mappedIngredients, // Now stores custom ingredient objects
+        image: newRecipe.image || '',
+        visibleToCashier: newRecipe.visibleToCashier,
+        expenseOnly: false
+      });
+
+      setNewRecipe({ name: '', price: '', ingredients: [], image: '', visibleToCashier: true });
+      setShowCreateModal(false);
+      loadProducts();
+      alert('Recipe created successfully!');
+    } catch (error) {
+      console.error('Error creating recipe:', error);
+      alert('Failed to create recipe. Please try again.');
+    }
   };
 
   const compositeProducts = products.filter(p => p.recipe);
@@ -122,10 +170,20 @@ export default function Recipes() {
           <div className="space-y-4">
             {compositeProducts.map(product => {
               const totalCost = product.recipe.reduce((sum, ing) => {
-                const raw = products.find(p => p.id === ing.productId);
-                if (raw) {
-                  const unitCost = raw.cost / raw.quantity;
-                  return sum + (unitCost * ing.quantity);
+                // Handle both old format (productId) and new format (name)
+                if (ing.productId) {
+                  const raw = products.find(p => p.id === ing.productId);
+                  if (raw) {
+                    const unitCost = raw.cost / raw.quantity;
+                    return sum + (unitCost * ing.quantity);
+                  }
+                } else if (ing.name) {
+                  // For custom ingredients, try to find matching raw product
+                  const raw = products.find(p => p.name.toLowerCase() === ing.name.toLowerCase());
+                  if (raw) {
+                    const unitCost = raw.cost / raw.quantity;
+                    return sum + (unitCost * ing.quantity);
+                  }
                 }
                 return sum;
               }, 0);
@@ -153,11 +211,25 @@ export default function Recipes() {
                     <p className="text-xs font-semibold text-gray-600 mb-2">INGREDIENTS:</p>
                     <div className="grid grid-cols-2 gap-2">
                       {product.recipe.map((ing, idx) => {
-                        const raw = products.find(p => p.id === ing.productId);
-                        return raw ? (
+                        // Handle both old format (productId) and new format (name)
+                        let ingredientName = '';
+                        let ingredientUnit = ing.unit || 'pcs';
+
+                        if (ing.productId) {
+                          const raw = products.find(p => p.id === ing.productId);
+                          if (raw) {
+                            ingredientName = raw.name;
+                            ingredientUnit = raw.unit;
+                          }
+                        } else if (ing.name) {
+                          ingredientName = ing.name;
+                          ingredientUnit = ing.unit || 'pcs';
+                        }
+
+                        return ingredientName ? (
                           <div key={idx} className="text-sm flex items-center justify-between bg-white px-3 py-2 rounded">
-                            <span>{raw.name}</span>
-                            <span className="font-semibold text-blue-600">{ing.quantity} {raw.unit}</span>
+                            <span>{ingredientName}</span>
+                            <span className="font-semibold text-blue-600">{ing.quantity} {ingredientUnit}</span>
                           </div>
                         ) : null;
                       })}
@@ -177,15 +249,16 @@ export default function Recipes() {
             <h3 className="text-xl font-bold mb-4">Create New Recipe</h3>
             
             <form onSubmit={handleCreateRecipe} className="space-y-4">
+              <input
+                type="text"
+                placeholder="Product Name (e.g., Fish Fingers)"
+                className="input"
+                value={newRecipe.name}
+                onChange={(e) => setNewRecipe({ ...newRecipe, name: e.target.value })}
+                required
+              />
+              
               <div className="grid grid-cols-2 gap-4">
-                <input
-                  type="text"
-                  placeholder="Product Name (e.g., Fish Fingers)"
-                  className="input"
-                  value={newRecipe.name}
-                  onChange={(e) => setNewRecipe({ ...newRecipe, name: e.target.value })}
-                  required
-                />
                 <input
                   type="number"
                   step="0.01"
@@ -195,7 +268,23 @@ export default function Recipes() {
                   onChange={(e) => setNewRecipe({ ...newRecipe, price: e.target.value })}
                   required
                 />
+                <input
+                  type="url"
+                  placeholder="Image URL (optional)"
+                  className="input"
+                  value={newRecipe.image}
+                  onChange={(e) => setNewRecipe({ ...newRecipe, image: e.target.value })}
+                />
               </div>
+
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={newRecipe.visibleToCashier}
+                  onChange={(e) => setNewRecipe({ ...newRecipe, visibleToCashier: e.target.checked })}
+                />
+                <span className="text-sm">Visible to Cashier</span>
+              </label>
 
               <div className="border-t pt-4">
                 <div className="flex items-center justify-between mb-3">
@@ -212,19 +301,22 @@ export default function Recipes() {
                 <div className="space-y-3">
                   {newRecipe.ingredients.map((ing, index) => (
                     <div key={index} className="flex items-center gap-2">
-                      <select
+                      <input
+                        type="text"
+                        placeholder="Ingredient name (e.g., Nile Perch)"
                         className="input flex-1"
-                        value={ing.productId}
-                        onChange={(e) => updateIngredient(index, 'productId', e.target.value)}
+                        value={ing.name}
+                        onChange={(e) => updateIngredient(index, 'name', e.target.value)}
                         required
-                      >
-                        <option value="">Select ingredient...</option>
+                        list={`ingredients-list-${index}`}
+                      />
+                      <datalist id={`ingredients-list-${index}`}>
                         {rawProducts.map(p => (
-                          <option key={p.id} value={p.id}>
+                          <option key={p.id} value={p.name}>
                             {p.name} ({p.quantity} {p.unit} available)
                           </option>
                         ))}
-                      </select>
+                      </datalist>
                       <input
                         type="number"
                         step="0.001"
@@ -234,6 +326,17 @@ export default function Recipes() {
                         onChange={(e) => updateIngredient(index, 'quantity', e.target.value)}
                         required
                       />
+                      <select
+                        className="input w-24"
+                        value={ing.unit}
+                        onChange={(e) => updateIngredient(index, 'unit', e.target.value)}
+                      >
+                        <option value="pcs">pcs</option>
+                        <option value="kg">kg</option>
+                        <option value="g">g</option>
+                        <option value="L">L</option>
+                        <option value="ml">ml</option>
+                      </select>
                       <button
                         type="button"
                         onClick={() => removeIngredient(index)}

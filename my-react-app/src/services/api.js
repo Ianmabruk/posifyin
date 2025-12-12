@@ -1,6 +1,9 @@
-const API_URL = import.meta.env.PROD ? '/api' : 'http://localhost:5001/api';
+import { saveData, loadData } from '../utils/localStorage.js';
+
+const API_URL = import.meta.env.PROD ? '/api' : 'http://localhost:5002/api';
 
 const getToken = () => localStorage.getItem('token');
+
 
 
 const request = async (endpoint, options = {}) => {
@@ -14,9 +17,32 @@ const request = async (endpoint, options = {}) => {
     }
   };
 
+  // Extract data key from endpoint for localStorage
+  const getDataKey = (endpoint) => {
+    if (endpoint.includes('/products')) return 'products';
+    if (endpoint.includes('/sales')) return 'sales';
+    if (endpoint.includes('/expenses')) return 'expenses';
+    if (endpoint.includes('/users')) return 'users';
+    if (endpoint.includes('/reminders')) return 'reminders';
+    if (endpoint.includes('/stats')) return 'stats';
+    if (endpoint.includes('/settings')) return 'settings';
+    if (endpoint.includes('/service-fees')) return 'serviceFees';
+    if (endpoint.includes('/discounts')) return 'discounts';
+    if (endpoint.includes('/credit-requests')) return 'creditRequests';
+    if (endpoint.includes('/time-entries')) return 'timeEntries';
+    if (endpoint.includes('/categories')) return 'categories';
+    if (endpoint.includes('/batches')) return 'batches';
+    if (endpoint.includes('/production')) return 'production';
+    if (endpoint.includes('/price-history')) return 'priceHistory';
+    return null;
+  };
+
+  const dataKey = getDataKey(endpoint);
+
   try {
     const response = await fetch(`${API_URL}${endpoint}`, config);
-    
+
+
     // For auth endpoints, throw errors so they can be caught and handled with fallback
     if (endpoint.includes('/auth/')) {
       if (!response.ok) {
@@ -25,26 +51,68 @@ const request = async (endpoint, options = {}) => {
       }
       return await response.json();
     }
-    
-    // For other endpoints, return empty data on failure
+
+
+    // Handle 401 Unauthorized for non-auth endpoints (Invalid Token)
+    if (response.status === 401) {
+      console.warn('Session expired or token invalid. Backend returned 401.');
+      // Only redirect if we are sure it's not a temporary glitch
+      // localStorage.removeItem('token');
+      // localStorage.removeItem('user');
+      // window.location.href = '/'; // Redirect to login
+      throw new Error('Session expired. Please login again.');
+    }
+
+
+    // Handle 204 No Content responses (typically DELETE operations)
+    if (response.status === 204) {
+      return { success: true, message: 'Operation completed successfully' };
+    }
+
+    // For CRUD operations (POST, PUT, DELETE), throw errors to ensure proper feedback
+    if (!response.ok && (options.method === 'POST' || options.method === 'PUT' || options.method === 'DELETE')) {
+      const errorData = await response.json().catch(() => ({ error: 'Operation failed' }));
+      throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    // For GET operations, return localStorage data on failure
     if (!response.ok) {
       console.warn(`API request failed: ${endpoint} - ${response.status}`);
-      
-      // Return appropriate empty data based on endpoint
+      if (dataKey) {
+        return loadData(dataKey);
+      }
       return getFallbackData(endpoint);
     }
-    
+
     const data = await response.json();
+
+    // Save successful GET responses to localStorage
+    if (!options.method || options.method === 'GET') {
+      if (dataKey && Array.isArray(data)) {
+        saveData(dataKey, data);
+      }
+    }
+
     return data;
   } catch (error) {
     // For auth endpoints, re-throw the error
     if (endpoint.includes('/auth/')) {
       throw error;
     }
-    
+
+    // For CRUD operations, re-throw the error
+    if (options.method === 'POST' || options.method === 'PUT' || options.method === 'DELETE') {
+      throw error;
+    }
+
     console.warn(`API request error: ${endpoint}`, error);
-    
-    // Return appropriate empty data based on endpoint
+
+    // Return localStorage data for GET operations on network failure
+    if (dataKey) {
+      return loadData(dataKey);
+    }
+
+    // Return appropriate empty data based on endpoint for GET operations
     return getFallbackData(endpoint);
   }
 };
@@ -93,9 +161,33 @@ export const auth = {
 
 export const products = {
   getAll: () => request('/products'),
-  create: (data) => request('/products', { method: 'POST', body: JSON.stringify(data) }),
-  update: (id, data) => request(`/products/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  delete: (id) => request(`/products/${id}`, { method: 'DELETE' })
+  create: async (data) => {
+    const result = await request('/products', { method: 'POST', body: JSON.stringify(data) });
+    // Update localStorage after successful creation
+    const currentProducts = loadData('products');
+    currentProducts.push(result);
+    saveData('products', currentProducts);
+    return result;
+  },
+  update: async (id, data) => {
+    const result = await request(`/products/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    // Update localStorage after successful update
+    const currentProducts = loadData('products');
+    const index = currentProducts.findIndex(p => p.id === id);
+    if (index !== -1) {
+      currentProducts[index] = result;
+      saveData('products', currentProducts);
+    }
+    return result;
+  },
+  delete: async (id) => {
+    const result = await request(`/products/${id}`, { method: 'DELETE' });
+    // Update localStorage after successful deletion
+    const currentProducts = loadData('products');
+    const filteredProducts = currentProducts.filter(p => p.id !== id);
+    saveData('products', filteredProducts);
+    return result;
+  }
 };
 
 export const sales = {

@@ -32,15 +32,28 @@ export const AuthProvider = ({ children }) => {
         if (token && userData) {
           const parsedUser = JSON.parse(userData);
           
-          // Ensure role is set correctly based on plan
-          if (parsedUser.plan === 'ultra' && parsedUser.role !== 'admin') {
-            parsedUser.role = 'admin';
-            parsedUser.active = true;
-            localStorage.setItem('user', JSON.stringify(parsedUser));
+
+          // Ensure role is set correctly based on plan and package type
+          if (parsedUser.plan === 'ultra') {
+            // Ultra package always gets admin role
+            if (parsedUser.role !== 'admin') {
+              parsedUser.role = 'admin';
+              parsedUser.active = true;
+              parsedUser.packageType = 'ultra';
+              localStorage.setItem('user', JSON.stringify(parsedUser));
+            }
+          } else if (parsedUser.plan === 'basic') {
+            // Basic package gets cashier role
+            if (parsedUser.role !== 'cashier') {
+              parsedUser.role = 'cashier';
+              parsedUser.active = true;
+              parsedUser.packageType = 'basic';
+              localStorage.setItem('user', JSON.stringify(parsedUser));
+            }
           }
           
-          // Ensure active flag is set for ultra plan users
-          if (parsedUser.plan === 'ultra' && !parsedUser.active) {
+          // Ensure active flag is set for all plan users
+          if (parsedUser.plan && !parsedUser.active) {
             parsedUser.active = true;
             localStorage.setItem('user', JSON.stringify(parsedUser));
           }

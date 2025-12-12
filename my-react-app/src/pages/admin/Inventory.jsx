@@ -37,52 +37,104 @@ export default function Inventory() {
   }, []);
 
 
+
   const loadProducts = async () => {
     try {
+
+
       const data = await productsApi.getAll();
+      
       // Ensure we always have an array
-      setProducts(Array.isArray(data) ? data : []);
+      if (Array.isArray(data)) {
+        setProducts(data);
+      } else {
+        console.error('Expected array but got:', typeof data, data);
+        setProducts([]);
+      }
     } catch (error) {
       console.error('Failed to load products:', error);
       setProducts([]);
     }
   };
 
+
   const handleAddProduct = async (e) => {
     e.preventDefault();
-    await productsApi.create({
-      ...newProduct,
-      price: parseFloat(newProduct.price),
-      cost: parseFloat(newProduct.cost),
-      quantity: parseFloat(newProduct.quantity),
-      visibleToCashier: !newProduct.expenseOnly && newProduct.visibleToCashier
-    });
-    setNewProduct({ name: '', price: '', cost: '', quantity: '', unit: 'pcs', category: 'raw', expenseOnly: false, image: '', visibleToCashier: true });
-    setShowAddModal(false);
-    loadProducts();
+    try {
+      const productData = {
+        ...newProduct,
+        price: parseFloat(newProduct.price),
+        cost: parseFloat(newProduct.cost),
+        quantity: parseFloat(newProduct.quantity),
+        visibleToCashier: !newProduct.expenseOnly && newProduct.visibleToCashier
+      };
+      
+
+      const result = await productsApi.create(productData);
+      
+      // Reset form and close modal
+      setNewProduct({ name: '', price: '', cost: '', quantity: '', unit: 'pcs', category: 'raw', expenseOnly: false, image: '', visibleToCashier: true });
+      setShowAddModal(false);
+      
+      // Refresh the products list
+      await loadProducts();
+      
+      // Show success message
+      alert('Product created successfully!');
+      
+    } catch (error) {
+      console.error('Failed to create product:', error);
+      alert(`Failed to create product: ${error.message || 'Unknown error'}`);
+    }
   };
+
 
   const handleEditProduct = async (e) => {
     e.preventDefault();
-    const originalProduct = products.find(p => p.id === editProduct.id);
-    if (parseFloat(editProduct.price) < originalProduct.price) {
-      alert('You cannot lower prices, only increase.');
-      return;
+    try {
+      const originalProduct = products.find(p => p.id === editProduct.id);
+      if (parseFloat(editProduct.price) < originalProduct.price) {
+        alert('You cannot lower prices, only increase.');
+        return;
+      }
+      
+      const updateData = {
+        ...editProduct,
+        price: parseFloat(editProduct.price),
+        cost: parseFloat(editProduct.cost),
+        quantity: parseFloat(editProduct.quantity)
+      };
+      
+
+      const result = await productsApi.update(editProduct.id, updateData);
+      
+      setShowEditModal(false);
+      await loadProducts();
+      
+      alert('Product updated successfully!');
+      
+    } catch (error) {
+      console.error('Failed to update product:', error);
+      alert(`Failed to update product: ${error.message || 'Unknown error'}`);
     }
-    await productsApi.update(editProduct.id, {
-      ...editProduct,
-      price: parseFloat(editProduct.price),
-      cost: parseFloat(editProduct.cost),
-      quantity: parseFloat(editProduct.quantity)
-    });
-    setShowEditModal(false);
-    loadProducts();
   };
 
   const handleDelete = async (id) => {
-    if (confirm('Are you sure you want to delete this product?')) {
-      await productsApi.delete(id);
-      loadProducts();
+    try {
+      if (!confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
+        return;
+      }
+      
+
+      const result = await productsApi.delete(id);
+      
+      await loadProducts();
+      
+      alert('Product deleted successfully!');
+      
+    } catch (error) {
+      console.error('Failed to delete product:', error);
+      alert(`Failed to delete product: ${error.message || 'Unknown error'}`);
     }
   };
 
@@ -190,8 +242,10 @@ export default function Inventory() {
       <div className="card">
         <div className="overflow-x-auto">
           <table className="w-full">
+
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Image</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Product Name</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Type</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Price</th>
@@ -213,7 +267,25 @@ export default function Inventory() {
 
                 return (
                   <>
+
                     <tr key={product.id} className="border-t border-gray-100 hover:bg-gray-50 transition-colors">
+
+                      <td className="px-4 py-3">
+                        {product.image ? (
+                          <img 
+                            src={product.image} 
+                            alt={product.name}
+                            className="w-12 h-12 object-cover rounded-lg"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center" style={{ display: product.image ? 'none' : 'flex' }}>
+                          <span className="text-xs text-gray-400">No Image</span>
+                        </div>
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           {product.recipe && (
@@ -283,10 +355,11 @@ export default function Inventory() {
                       </td>
                     </tr>
                     
+
                     {/* Expanded Row - Recipe Breakdown */}
                     {isExpanded && product.recipe && (
                       <tr className="bg-blue-50">
-                        <td colSpan="8" className="px-4 py-4">
+                        <td colSpan="9" className="px-4 py-4">
                           <div className="ml-8">
                             <h4 className="font-semibold text-sm text-gray-700 mb-3">Recipe Breakdown:</h4>
                             <table className="w-full text-sm">
@@ -336,6 +409,7 @@ export default function Inventory() {
           </table>
         </div>
       </div>
+
 
       {/* Add Product Modal */}
       {showAddModal && (
@@ -455,6 +529,130 @@ export default function Inventory() {
               <div className="flex gap-2">
                 <button type="submit" className="btn-primary flex-1">Add Product</button>
                 <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary">Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Product Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+            <h3 className="text-xl font-bold mb-4">Edit Product</h3>
+            <form onSubmit={handleEditProduct} className="space-y-4">
+              <input
+                type="text"
+                placeholder="Product Name"
+                className="input"
+                value={editProduct.name}
+                onChange={(e) => setEditProduct({ ...editProduct, name: e.target.value })}
+                required
+              />
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Product Image</label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    placeholder="Image URL"
+                    className="input flex-1"
+                    value={editProduct.image || ''}
+                    onChange={(e) => setEditProduct({ ...editProduct, image: e.target.value })}
+                  />
+                  <span className="text-sm text-gray-500 self-center">or</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="input flex-1"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setEditProduct({ ...editProduct, image: reader.result });
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                  />
+                </div>
+                {editProduct.image && (
+                  <img src={editProduct.image} alt="Preview" className="w-20 h-20 object-cover rounded" />
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="Price"
+                  className="input"
+                  value={editProduct.price || ''}
+                  onChange={(e) => setEditProduct({ ...editProduct, price: e.target.value })}
+                  required
+                />
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="Cost"
+                  className="input"
+                  value={editProduct.cost || ''}
+                  onChange={(e) => setEditProduct({ ...editProduct, cost: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="Quantity"
+                  className="input"
+                  value={editProduct.quantity || ''}
+                  onChange={(e) => setEditProduct({ ...editProduct, quantity: e.target.value })}
+                  required
+                />
+                <select
+                  className="input"
+                  value={editProduct.unit || 'pcs'}
+                  onChange={(e) => setEditProduct({ ...editProduct, unit: e.target.value })}
+                >
+                  <option value="pcs">Pieces</option>
+                  <option value="kg">Kilograms</option>
+                  <option value="L">Liters</option>
+                  <option value="g">Grams</option>
+                  <option value="ml">Milliliters</option>
+                </select>
+              </div>
+              <select
+                className="input"
+                value={editProduct.category || 'raw'}
+                onChange={(e) => setEditProduct({ ...editProduct, category: e.target.value })}
+              >
+                <option value="raw">Raw Material</option>
+                <option value="finished">Finished Product</option>
+              </select>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={editProduct.expenseOnly || false}
+                    onChange={(e) => setEditProduct({ ...editProduct, expenseOnly: e.target.checked, visibleToCashier: !e.target.checked })}
+                  />
+                  <span className="text-sm">Expense Only (Hidden from cashier)</span>
+                </label>
+                {!editProduct.expenseOnly && (
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={editProduct.visibleToCashier !== false}
+                      onChange={(e) => setEditProduct({ ...editProduct, visibleToCashier: e.target.checked })}
+                    />
+                    <span className="text-sm">Visible to Cashier</span>
+                  </label>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button type="submit" className="btn-primary flex-1">Update Product</button>
+                <button type="button" onClick={() => setShowEditModal(false)} className="btn-secondary">Cancel</button>
               </div>
             </form>
           </div>

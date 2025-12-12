@@ -50,50 +50,45 @@ export default function Subscription() {
   ];
 
 
+
   const handleSubscribe = async () => {
     try {
       const plan = plans.find(p => p.id === selected);
-      const role = selected === 'ultra' ? 'admin' : 'cashier';
       
       // Step 1: Create updated user object
       const updatedUser = { 
         ...user, 
-        role, 
+        role: selected === 'ultra' ? 'admin' : 'cashier', 
         plan: selected, 
         price: plan.price, 
-        active: true 
+        active: true,
+        packageType: selected // Store package type for reference
       };
-      
+
       // Step 2: Update localStorage synchronously FIRST
       localStorage.setItem('user', JSON.stringify(updatedUser));
-      
-      // Step 3: Update token synchronously
-      const newToken = btoa(JSON.stringify({ 
-        id: updatedUser.id, 
-        email: updatedUser.email, 
-        role: updatedUser.role,
-        plan: updatedUser.plan,
-        active: true
-      }));
-      localStorage.setItem('token', newToken);
-      
 
-      // Step 4: Force trigger storage event to update all contexts
+      // Step 3: Force trigger storage event to update all contexts
       window.dispatchEvent(new Event('storage'));
-      
-      // Step 4.5: Also dispatch custom event for extra reliability
       window.dispatchEvent(new Event('localStorageUpdated'));
       
-      // Step 5: Update auth context (async but fire and forget)
-      updateUser(updatedUser).catch(err => {
+      // Step 4: Update auth context
+      await updateUser(updatedUser).catch(err => {
         console.warn('Auth context update failed, but localStorage updated:', err);
       });
       
-      // Step 6: Add longer delay for Netlify deployment to ensure state sync
+      // Step 5: Add delay for state sync
       await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // Step 7: Navigate to target path
-      const targetPath = role === 'admin' ? '/admin' : '/cashier';
+      // Step 6: Navigate to appropriate dashboard based on package
+      let targetPath;
+      if (selected === 'ultra') {
+        // Ultra package: Admin dashboard first
+        targetPath = '/admin';
+      } else {
+        // Basic package: Direct to cashier dashboard
+        targetPath = '/cashier';
+      }
       
       // Use window.location.href for more reliable redirect in production
       if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
