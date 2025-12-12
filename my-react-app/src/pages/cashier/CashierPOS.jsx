@@ -77,25 +77,60 @@ export default function CashierPOS() {
 
 
 
+
   const loadData = async () => {
-    const [products, sales, statistics, requests, discountData] = await Promise.all([
-      productsApi.getAll(),
-      salesApi.getAll(),
-      stats.get(),
-      creditRequests.getAll().catch(() => []),
-      discounts.getAll().catch(() => [])
-    ]);
-    // Filter products visible to cashier and exclude deleted products
-    const visibleProducts = products.filter(p => 
-      p.visibleToCashier !== false && 
-      !p.expenseOnly && 
-      !p.pendingDelete
-    );
-    setProductList(visibleProducts);
-    setSalesData(sales.reverse());
-    setStatsData(statistics);
-    setDiscountRequests(requests);
-    setDiscounts(discountData);
+    try {
+      const [products, sales, statistics, requests, discountData] = await Promise.all([
+        productsApi.getAll(),
+        salesApi.getAll(),
+        stats.get(),
+        creditRequests.getAll().catch(() => []),
+        discounts.getAll().catch(() => [])
+      ]);
+      
+      // Enhanced product filtering with better visibility logic
+      const visibleProducts = products.filter(p => {
+        // Include product if it's not expenseOnly and not deleted
+        const isVisible = !p.expenseOnly && !p.pendingDelete;
+        
+        // For products without explicit visibleToCashier field, assume visible unless expenseOnly
+        const isNotHidden = p.visibleToCashier !== false;
+        
+        // Debug logging
+        if (p.id <= 5) { // Only log first few products to avoid spam
+          console.log(`Product ${p.name}:`, {
+            expenseOnly: p.expenseOnly,
+            visibleToCashier: p.visibleToCashier,
+            pendingDelete: p.pendingDelete,
+            isVisible,
+            isNotHidden,
+            finalInclude: isVisible && isNotHidden
+          });
+        }
+        
+        return isVisible && isNotHidden;
+      });
+      
+      console.log('Loaded products for cashier:', {
+        total: products.length,
+        visible: visibleProducts.length,
+        visibleProductNames: visibleProducts.map(p => p.name)
+      });
+      
+      setProductList(visibleProducts);
+      setSalesData(sales.reverse());
+      setStatsData(statistics);
+      setDiscountRequests(requests);
+      setDiscounts(discountData);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      // Fallback to empty data on error
+      setProductList([]);
+      setSalesData([]);
+      setStatsData({});
+      setDiscountRequests([]);
+      setDiscounts([]);
+    }
   };
 
   const addToCart = (product) => {
@@ -544,8 +579,9 @@ export default function CashierPOS() {
                   </tr>
                 </thead>
 
+
                 <tbody>
-                  {productList.filter(p => !p.pendingDelete).map((product) => (
+                  {productList.filter(p => !p.pendingDelete && p.visibleToCashier !== false).map((product) => (
                     <tr key={product.id} className="border-t border-gray-100 hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm font-medium">{product.name}</td>
                       <td className="px-4 py-3 text-sm font-semibold text-green-600">KSH {product.price?.toLocaleString()}</td>

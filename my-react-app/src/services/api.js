@@ -1,8 +1,14 @@
-import { saveData, loadData } from '../utils/localStorage.js';
+
+import { saveData, loadData, getDataWithSync, refreshData, initializeStorage } from '../utils/localStorage.js';
+
 
 const API_URL = import.meta.env.PROD ? '/api' : 'http://localhost:5002/api';
 
+// Force production URL for deployment fix
+const BASE_API_URL = window.location.hostname === 'localhost' ? 'http://localhost:5002/api' : '/api';
+
 const getToken = () => localStorage.getItem('token');
+
 
 
 
@@ -40,7 +46,7 @@ const request = async (endpoint, options = {}) => {
   const dataKey = getDataKey(endpoint);
 
   try {
-    const response = await fetch(`${API_URL}${endpoint}`, config);
+    const response = await fetch(`${BASE_API_URL}${endpoint}`, config);
 
 
     // For auth endpoints, throw errors so they can be caught and handled with fallback
@@ -99,9 +105,10 @@ const request = async (endpoint, options = {}) => {
       setTimeout(async () => {
         try {
           const backendAvailable = await isBackendAvailable();
+
           if (backendAvailable) {
             // Sync pending local data for this data type
-            const localData = loadData(dataKey);
+            const localData = getDataWithSync(dataKey);
             if (localData && Array.isArray(localData)) {
               for (const item of localData) {
                 if (item.pendingSync) {
@@ -138,9 +145,10 @@ const request = async (endpoint, options = {}) => {
 
     console.warn(`API request error: ${endpoint}`, error);
 
+
     // Return localStorage data for GET operations on network failure
     if (dataKey) {
-      return loadData(dataKey);
+      return getDataWithSync(dataKey);
     }
 
     // Return appropriate empty data based on endpoint for GET operations

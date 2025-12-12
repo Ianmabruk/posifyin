@@ -1,5 +1,7 @@
+
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { initializeStorage, setupCrossTabSync, refreshData } from './utils/localStorage';
 import Landing from './pages/Landing';
 import Auth from './pages/Auth';
 import Subscription from './pages/Subscription';
@@ -7,8 +9,6 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import CashierPOS from './pages/cashier/CashierPOS';
 import CashierSettings from './pages/cashier/CashierSettings';
 import MainAdmin from './pages/MainAdmin';
-
-
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Loading component
@@ -108,7 +108,33 @@ function DashboardRouter() {
 
 
 
+
 function App() {
+  // Initialize localStorage and set up cross-tab synchronization
+  useEffect(() => {
+    // Initialize localStorage with default data if not exists
+    initializeStorage();
+    
+    // Set up cross-tab synchronization
+    const cleanup = setupCrossTabSync();
+    
+    // Set up data refresh on localStorage changes
+    const handleDataChange = (event) => {
+      if (event.detail?.key) {
+        console.log(`Data changed, refreshing: ${event.detail.key}`);
+        refreshData(event.detail.key);
+      }
+    };
+    
+    window.addEventListener('localStorageDataChanged', handleDataChange);
+    
+    // Clean up event listeners on unmount
+    return () => {
+      cleanup();
+      window.removeEventListener('localStorageDataChanged', handleDataChange);
+    };
+  }, []);
+
   return (
     <ErrorBoundary>
       <AuthProvider>

@@ -61,12 +61,14 @@ export default function Inventory() {
   const handleAddProduct = async (e) => {
     e.preventDefault();
     try {
+
       const productData = {
         ...newProduct,
         price: parseFloat(newProduct.price),
         cost: parseFloat(newProduct.cost),
         quantity: parseFloat(newProduct.quantity),
-        visibleToCashier: !newProduct.expenseOnly && newProduct.visibleToCashier
+        // Ensure products are visible to cashiers unless explicitly marked as expenseOnly
+        visibleToCashier: !newProduct.expenseOnly && newProduct.visibleToCashier !== false
       };
       
 
