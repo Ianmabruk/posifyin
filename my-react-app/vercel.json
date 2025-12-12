@@ -1,13 +1,10 @@
+
 {
   "version": 2,
   "builds": [
     {
       "src": "api/**/*",
       "use": "@vercel/node"
-    },
-    {
-      "src": "index.html",
-      "use": "@vercel/static"
     },
     {
       "src": "package.json",
@@ -34,5 +31,7 @@
   },
   "env": {
     "FLASK_ENV": "production"
-  }
+  },
+  "cleanUrls": true,
+  "trailingSlash": false
 }
