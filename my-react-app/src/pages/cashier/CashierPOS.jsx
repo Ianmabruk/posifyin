@@ -26,6 +26,7 @@ export default function CashierPOS() {
 
   const [discountRequests, setDiscountRequests] = useState([]);
 
+
   const [discounts, setDiscounts] = useState([]);
   const [selectedDiscount, setSelectedDiscount] = useState(null);
   const [discountForm, setDiscountForm] = useState({
@@ -34,15 +35,32 @@ export default function CashierPOS() {
     reason: '',
     items: []
   });
+  const [lastProductUpdate, setLastProductUpdate] = useState(Date.now());
+  const [productUpdateCount, setProductUpdateCount] = useState(0);
+  const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
 
   useEffect(() => {
     loadData();
+    
     // Check if already clocked in today
     const todayClockIn = localStorage.getItem(`clockIn_${user?.id}_${new Date().toDateString()}`);
     if (todayClockIn) {
       setClockedIn(true);
       setClockInTime(new Date(todayClockIn));
     }
+
+    // Set up automatic product refresh every 30 seconds
+    const refreshInterval = setInterval(() => {
+      console.log('🔄 Auto-refreshing products...');
+      setIsAutoRefreshing(true);
+      loadData().finally(() => {
+        setIsAutoRefreshing(false);
+        setLastProductUpdate(Date.now());
+        setProductUpdateCount(prev => prev + 1);
+      });
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(refreshInterval);
   }, []);
 
   const handleClockIn = () => {
@@ -230,13 +248,26 @@ export default function CashierPOS() {
               {user?.plan === 'basic' ? 'Basic Package - KSH 900/month' : 'Ultra Package Access'}
             </p>
           </div>
-          <div className="flex items-center gap-2 md:gap-4">
+
+        <div className="flex items-center gap-2 md:gap-4">
             <div className="text-right hidden md:block">
               <p className="text-sm font-medium text-gray-900">{user?.name}</p>
               <p className="text-xs text-gray-500">{user?.email}</p>
               {clockedIn && clockInTime && (
                 <p className="text-xs text-green-600 font-medium">Clocked in: {clockInTime.toLocaleTimeString()}</p>
               )}
+              <div className="text-xs text-gray-400 mt-1">
+                {isAutoRefreshing ? (
+                  <span className="text-blue-600 flex items-center gap-1">
+                    <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                    Updating...
+                  </span>
+                ) : (
+                  <span>
+                    Last update: {new Date(lastProductUpdate).toLocaleTimeString()}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2">
               {clockedIn ? (
@@ -299,16 +330,48 @@ export default function CashierPOS() {
         <div className="flex-1 flex flex-col md:flex-row">
           {/* Products Grid */}
           <div className="flex-1 p-3 md:p-6 overflow-y-auto">
+
             <div className="mb-6">
-              <div className="relative max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search products..."
-                  className="input pl-10"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+              <div className="flex items-center gap-4">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search products..."
+                    className="input pl-10"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    console.log('🔄 Manual refresh triggered');
+                    setIsAutoRefreshing(true);
+                    loadData().finally(() => {
+                      setIsAutoRefreshing(false);
+                      setLastProductUpdate(Date.now());
+                      setProductUpdateCount(prev => prev + 1);
+                    });
+                  }}
+                  disabled={isAutoRefreshing}
+                  className="btn-secondary flex items-center gap-2 px-4 py-2"
+                  title="Refresh products manually"
+                >
+                  <svg className={`w-4 h-4 ${isAutoRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Refresh
+                </button>
+              </div>
+              
+              {/* Auto-refresh status */}
+              <div className="mt-2 text-xs text-gray-500">
+                💡 Products auto-refresh every 30 seconds. Current products: {filteredProducts.length}
+                {productUpdateCount > 0 && (
+                  <span className="ml-2 text-green-600">
+                    • Updated {productUpdateCount} time{productUpdateCount !== 1 ? 's' : ''} this session
+                  </span>
+                )}
               </div>
             </div>
             

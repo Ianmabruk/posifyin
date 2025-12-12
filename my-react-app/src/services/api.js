@@ -99,6 +99,7 @@ const request = async (endpoint, options = {}) => {
       }
     }
 
+
     // After successful backend operation, try to sync any pending local data
     if (options.method === 'POST' || options.method === 'PUT' || options.method === 'DELETE') {
       // Run sync in background to avoid blocking the response
@@ -129,6 +130,9 @@ const request = async (endpoint, options = {}) => {
           console.warn('Data sync failed:', error);
         }
       }, 100);
+      
+      // Broadcast data update to other components
+      broadcastDataUpdate(dataKey);
     }
 
     return data;
@@ -341,6 +345,43 @@ export const production = {
   create: (data) => request('/production', { method: 'POST', body: JSON.stringify(data) })
 };
 
+
 export const categories = {
   generateCode: (data) => request('/categories/generate-code', { method: 'POST', body: JSON.stringify(data) })
+};
+
+// Data synchronization helper functions
+const broadcastDataUpdate = (dataType) => {
+  // Store update timestamp in localStorage for other components to check
+  const updateKey = `dataUpdate_${dataType}`;
+  localStorage.setItem(updateKey, Date.now().toString());
+  
+  // Broadcast to other tabs/windows if available
+  if (typeof window !== 'undefined' && window.localStorage) {
+    window.dispatchEvent(new CustomEvent('dataUpdate', {
+      detail: { dataType, timestamp: Date.now() }
+    }));
+  }
+};
+
+export const getLastUpdate = (dataType) => {
+  const updateKey = `dataUpdate_${dataType}`;
+  const timestamp = localStorage.getItem(updateKey);
+  return timestamp ? parseInt(timestamp) : null;
+};
+
+export const isDataStale = (dataType, maxAge = 30000) => { // 30 seconds default
+  const lastUpdate = getLastUpdate(dataType);
+  if (!lastUpdate) return true;
+  
+  return (Date.now() - lastUpdate) > maxAge;
+};
+
+export const forceDataRefresh = async (dataType) => {
+  // Clear cached data to force fresh load
+  localStorage.removeItem(`data_${dataType}`);
+  localStorage.removeItem(`dataUpdate_${dataType}`);
+  
+  // Trigger broadcast for other components
+  broadcastDataUpdate(dataType);
 };

@@ -8,7 +8,9 @@ export default function Inventory() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+
   const [expandedRow, setExpandedRow] = useState(null);
+  const [notification, setNotification] = useState(null);
   const [newProduct, setNewProduct] = useState({
     name: '',
     price: '',
@@ -32,9 +34,15 @@ export default function Inventory() {
     visibleToCashier: true
   });
 
+
   useEffect(() => {
     loadProducts();
   }, []);
+
+  const showNotification = (message, type = 'success') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 5000);
+  };
 
 
 
@@ -81,8 +89,9 @@ export default function Inventory() {
       // Refresh the products list
       await loadProducts();
       
-      // Show success message
-      alert('Product created successfully!');
+
+      // Show success notification
+      showNotification(`✅ Product "${result.name}" added successfully! ${result.visibleToCashier ? 'Cashiers can now see this product.' : 'This product is hidden from cashiers.'}`, 'success');
       
     } catch (error) {
       console.error('Failed to create product:', error);
@@ -206,8 +215,28 @@ export default function Inventory() {
     return totalCost;
   };
 
+
   return (
     <div className="p-6 space-y-6">
+      {/* Notification */}
+      {notification && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-md ${
+          notification.type === 'success' ? 'bg-green-50 border border-green-200 text-green-800' :
+          notification.type === 'error' ? 'bg-red-50 border border-red-200 text-red-800' :
+          'bg-blue-50 border border-blue-200 text-blue-800'
+        }`}>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">{notification.message}</span>
+            <button 
+              onClick={() => setNotification(null)}
+              className="ml-2 text-gray-400 hover:text-gray-600"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
