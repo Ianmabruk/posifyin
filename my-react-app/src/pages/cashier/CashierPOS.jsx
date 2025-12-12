@@ -23,7 +23,11 @@ export default function CashierPOS() {
   const [clockedIn, setClockedIn] = useState(false);
   const [clockInTime, setClockInTime] = useState(null);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
+
   const [discountRequests, setDiscountRequests] = useState([]);
+
+  const [discounts, setDiscounts] = useState([]);
+  const [selectedDiscount, setSelectedDiscount] = useState(null);
   const [discountForm, setDiscountForm] = useState({
     type: 'percentage',
     value: '',
@@ -72,19 +76,26 @@ export default function CashierPOS() {
   };
 
 
+
   const loadData = async () => {
-    const [products, sales, statistics, requests] = await Promise.all([
+    const [products, sales, statistics, requests, discountData] = await Promise.all([
       productsApi.getAll(),
       salesApi.getAll(),
       stats.get(),
-      creditRequests.getAll().catch(() => [])
+      creditRequests.getAll().catch(() => []),
+      discounts.getAll().catch(() => [])
     ]);
-    // Filter products visible to cashier
-    const visibleProducts = products.filter(p => p.visibleToCashier !== false && !p.expenseOnly);
+    // Filter products visible to cashier and exclude deleted products
+    const visibleProducts = products.filter(p => 
+      p.visibleToCashier !== false && 
+      !p.expenseOnly && 
+      !p.pendingDelete
+    );
     setProductList(visibleProducts);
     setSalesData(sales.reverse());
     setStatsData(statistics);
     setDiscountRequests(requests);
+    setDiscounts(discountData);
   };
 
   const addToCart = (product) => {
@@ -135,13 +146,19 @@ export default function CashierPOS() {
   };
 
 
+
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const discountRate = 0.15; // 15% total discount
+  // Calculate discount based on selected discount or use a small default discount
+  const discountRate = selectedDiscount ? selectedDiscount.percentage / 100 : 0.05; // 5% default or selected discount
   const discountAmount = subtotal * discountRate;
   const discountedSubtotal = subtotal - discountAmount;
   const taxRate = 0.16; // 16% VAT
   const taxAmount = taxInclusive ? 0 : discountedSubtotal * taxRate;
   const total = discountedSubtotal + taxAmount;
+
+  const handleApplyDiscount = ({ discount, newPrice, discountAmount }) => {
+    setSelectedDiscount(discount);
+  };
 
   const handleCheckout = async () => {
     if (cart.length === 0) return;
@@ -325,7 +342,8 @@ export default function CashierPOS() {
 
 
 
-            {/* Discount Display Area */}
+
+            {/* Dynamic Discount Display Area */}
             {cart.length > 0 && (
               <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 mb-4 shadow-sm">
                 <div className="flex items-center gap-2 mb-3">
@@ -334,23 +352,47 @@ export default function CashierPOS() {
                   </div>
                   <h4 className="font-semibold text-blue-900">Available Discounts</h4>
                 </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center bg-white/50 rounded-lg p-2">
-                    <span className="text-sm text-blue-700">Customer Loyalty Discount</span>
-                    <span className="text-sm font-semibold text-blue-600">5%</span>
-                  </div>
-                  <div className="flex justify-between items-center bg-white/50 rounded-lg p-2">
-                    <span className="text-sm text-blue-700">Bulk Purchase Discount</span>
-                    <span className="text-sm font-semibold text-blue-600">10%</span>
-                  </div>
-                  <div className="border-t-2 border-blue-300 pt-2 mt-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-bold text-blue-900">Total Discount Applied</span>
-                      <span className="text-sm font-bold text-blue-600">
-                        KSH {discountAmount.toLocaleString()} ({Math.round(discountRate * 100)}%)
-                      </span>
+                
+
+                {discounts.length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="max-h-48 overflow-y-auto">
+                      <DiscountSelector 
+                        originalPrice={subtotal} 
+                        onApply={handleApplyDiscount}
+                      />
                     </div>
+                    {selectedDiscount && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-green-700 font-medium">Applied: {selectedDiscount.name}</span>
+                          </div>
+                          <span className="text-green-600 font-bold">{selectedDiscount.percentage}%</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-gray-500">No active discounts available</p>
+                    <p className="text-xs text-gray-400 mt-1">Check with admin to set up discounts</p>
+                  </div>
+                )}
+                
+
+                <div className="border-t-2 border-blue-300 pt-2 mt-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-bold text-blue-900">Total Discount Applied</span>
+                    <span className="text-sm font-bold text-blue-600">
+                      KSH {discountAmount.toLocaleString()} ({Math.round(discountRate * 100)}%)
+                    </span>
+                  </div>
+                  {selectedDiscount && (
+                    <div className="text-xs text-gray-600 mt-1">
+                      Applied discount: {selectedDiscount.name} ({selectedDiscount.percentage}%)
+                    </div>
+                  )}
                 </div>
                 
                 {/* Enhanced Request Discount Button */}
@@ -501,8 +543,9 @@ export default function CashierPOS() {
                     <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
                   </tr>
                 </thead>
+
                 <tbody>
-                  {productList.map((product) => (
+                  {productList.filter(p => !p.pendingDelete).map((product) => (
                     <tr key={product.id} className="border-t border-gray-100 hover:bg-gray-50">
                       <td className="px-4 py-3 text-sm font-medium">{product.name}</td>
                       <td className="px-4 py-3 text-sm font-semibold text-green-600">KSH {product.price?.toLocaleString()}</td>

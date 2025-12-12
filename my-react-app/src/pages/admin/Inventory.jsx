@@ -38,15 +38,15 @@ export default function Inventory() {
 
 
 
+
   const loadProducts = async () => {
     try {
-
-
       const data = await productsApi.getAll();
       
-      // Ensure we always have an array
+      // Ensure we always have an array and filter out deleted products
       if (Array.isArray(data)) {
-        setProducts(data);
+        const activeProducts = data.filter(p => !p.pendingDelete);
+        setProducts(activeProducts);
       } else {
         console.error('Expected array but got:', typeof data, data);
         setProducts([]);

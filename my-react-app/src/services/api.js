@@ -239,6 +239,7 @@ export const products = {
       throw error;
     }
   },
+
   delete: async (id) => {
     try {
       const result = await request(`/products/${id}`, { method: 'DELETE' });
