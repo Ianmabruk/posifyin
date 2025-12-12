@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { products as productsApi, sales as salesApi, stats } from '../../services/api';
+
+import { products as productsApi, sales as salesApi, stats, creditRequests, discounts } from '../../services/api';
 import { ShoppingCart, Trash2, LogOut, Plus, Minus, Search, DollarSign, TrendingUp, Package, BarChart3, Edit2, Settings, Tag } from 'lucide-react';
 import DiscountSelector from '../../components/DiscountSelector';
 import ProductCard from '../../components/ProductCard';
@@ -18,8 +19,17 @@ export default function CashierPOS() {
   const [searchTerm, setSearchTerm] = useState('');
   const [salesData, setSalesData] = useState([]);
   const [statsData, setStatsData] = useState({});
+
   const [clockedIn, setClockedIn] = useState(false);
   const [clockInTime, setClockInTime] = useState(null);
+  const [showDiscountModal, setShowDiscountModal] = useState(false);
+  const [discountRequests, setDiscountRequests] = useState([]);
+  const [discountForm, setDiscountForm] = useState({
+    type: 'percentage',
+    value: '',
+    reason: '',
+    items: []
+  });
 
   useEffect(() => {
     loadData();
@@ -61,17 +71,20 @@ export default function CashierPOS() {
     setClockInTime(null);
   };
 
+
   const loadData = async () => {
-    const [products, sales, statistics] = await Promise.all([
+    const [products, sales, statistics, requests] = await Promise.all([
       productsApi.getAll(),
       salesApi.getAll(),
-      stats.get()
+      stats.get(),
+      creditRequests.getAll().catch(() => [])
     ]);
     // Filter products visible to cashier
     const visibleProducts = products.filter(p => p.visibleToCashier !== false && !p.expenseOnly);
     setProductList(visibleProducts);
     setSalesData(sales.reverse());
     setStatsData(statistics);
+    setDiscountRequests(requests);
   };
 
   const addToCart = (product) => {
@@ -91,8 +104,34 @@ export default function CashierPOS() {
     ).filter(item => item.quantity > 0));
   };
 
+
   const removeFromCart = (id) => {
     setCart(cart.filter(item => item.id !== id));
+  };
+
+  const handleRequestDiscount = async (e) => {
+    e.preventDefault();
+    try {
+      const requestData = {
+        type: discountForm.type,
+        value: parseFloat(discountForm.value),
+        reason: discountForm.reason,
+        items: cart.map(item => ({ productId: item.id, quantity: item.quantity, price: item.price })),
+        requestedBy: user?.id,
+        requestedByName: user?.name,
+        subtotal: subtotal,
+        createdAt: new Date().toISOString()
+      };
+
+      await creditRequests.create(requestData);
+      setShowDiscountModal(false);
+      setDiscountForm({ type: 'percentage', value: '', reason: '', items: [] });
+      await loadData();
+      alert('Discount request submitted successfully!');
+    } catch (error) {
+      console.error('Failed to request discount:', error);
+      alert('Failed to request discount: ' + error.message);
+    }
   };
 
 
@@ -284,6 +323,7 @@ export default function CashierPOS() {
             </div>
 
 
+
             {/* Discount Display Area */}
             {cart.length > 0 && (
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
@@ -308,6 +348,43 @@ export default function CashierPOS() {
                       </span>
                     </div>
                   </div>
+                </div>
+                <button 
+                  onClick={() => setShowDiscountModal(true)}
+                  className="w-full mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                >
+                  Request Additional Discount
+                </button>
+              </div>
+            )}
+
+            {/* Current Discount Requests */}
+            {discountRequests.length > 0 && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4">
+                <h4 className="font-semibold text-yellow-900 mb-3">Pending Discount Requests</h4>
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {discountRequests.slice(0, 3).map((request) => (
+                    <div key={request.id} className="bg-white rounded-lg p-3 border border-yellow-200">
+                      <div className="flex justify-between items-start mb-1">
+                        <span className="text-sm font-medium text-gray-900">
+                          {request.type === 'percentage' ? `${request.value}%` : `KSH ${request.value}`}
+                        </span>
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          request.status === 'approved' ? 'bg-green-100 text-green-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {request.status}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-600 truncate">{request.reason}</p>
+                    </div>
+                  ))}
+                  {discountRequests.length > 3 && (
+                    <p className="text-xs text-gray-500 text-center">
+                      +{discountRequests.length - 3} more requests
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -610,6 +687,76 @@ export default function CashierPOS() {
                 </tbody>
               </table>
             </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* Discount Request Modal */}
+      {showDiscountModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+            <h3 className="text-xl font-bold mb-4">Request Discount</h3>
+            <form onSubmit={handleRequestDiscount} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Discount Type</label>
+                <select 
+                  className="input"
+                  value={discountForm.type}
+                  onChange={(e) => setDiscountForm({ ...discountForm, type: e.target.value })}
+                >
+                  <option value="percentage">Percentage (%)</option>
+                  <option value="fixed">Fixed Amount (KSH)</option>
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {discountForm.type === 'percentage' ? 'Discount Percentage' : 'Discount Amount (KSH)'}
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder={discountForm.type === 'percentage' ? '10' : '500'}
+                  className="input"
+                  value={discountForm.value}
+                  onChange={(e) => setDiscountForm({ ...discountForm, value: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Reason for Discount</label>
+                <textarea
+                  className="input"
+                  placeholder="Explain why this discount is needed..."
+                  rows="3"
+                  value={discountForm.reason}
+                  onChange={(e) => setDiscountForm({ ...discountForm, reason: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-3">
+                <h4 className="font-medium text-gray-900 mb-2">Cart Summary</h4>
+                <p className="text-sm text-gray-600">Items: {cart.length}</p>
+                <p className="text-sm text-gray-600">Subtotal: KSH {subtotal.toLocaleString()}</p>
+              </div>
+
+              <div className="flex gap-2">
+                <button type="submit" className="btn-primary flex-1">Submit Request</button>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setShowDiscountModal(false);
+                    setDiscountForm({ type: 'percentage', value: '', reason: '', items: [] });
+                  }} 
+                  className="btn-secondary"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

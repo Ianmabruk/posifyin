@@ -151,9 +151,194 @@ module.exports = async (req, res) => {
         return res.status(204).end();
       }
 
-      // Products, Sales, Expenses, Stats, Settings, Reminders endpoints
-      // (keeping it short - add all other endpoints from the Netlify function here)
-      
+
+      // Products endpoints
+      if (path === '/products' && method === 'GET') {
+        return res.status(200).json(storage.products);
+      }
+
+      if (path === '/products' && method === 'POST') {
+        const product = {
+          id: storage.products.length + 1,
+          ...body,
+          createdAt: new Date().toISOString()
+        };
+        storage.products.push(product);
+        return res.status(201).json(product);
+      }
+
+      if (path.startsWith('/products/') && method === 'PUT') {
+        const id = parseInt(path.split('/')[2]);
+        const product = storage.products.find(p => p.id === id);
+        if (!product) return res.status(404).json({ error: 'Product not found' });
+        Object.assign(product, body);
+        return res.status(200).json(product);
+      }
+
+      if (path.startsWith('/products/') && method === 'DELETE') {
+        const id = parseInt(path.split('/')[2]);
+        const index = storage.products.findIndex(p => p.id === id);
+        if (index === -1) return res.status(404).json({ error: 'Product not found' });
+        storage.products.splice(index, 1);
+        return res.status(204).end();
+      }
+
+      // Sales endpoints
+      if (path === '/sales' && method === 'GET') {
+        return res.status(200).json(storage.sales);
+      }
+
+      if (path === '/sales' && method === 'POST') {
+        const sale = {
+          id: storage.sales.length + 1,
+          ...body,
+          createdAt: new Date().toISOString()
+        };
+        storage.sales.push(sale);
+        return res.status(201).json(sale);
+      }
+
+      // Expenses endpoints
+      if (path === '/expenses' && method === 'GET') {
+        return res.status(200).json(storage.expenses);
+      }
+
+      if (path === '/expenses' && method === 'POST') {
+        const expense = {
+          id: storage.expenses.length + 1,
+          ...body,
+          createdAt: new Date().toISOString()
+        };
+        storage.expenses.push(expense);
+        return res.status(201).json(expense);
+      }
+
+      // Discounts endpoints
+      if (path === '/discounts' && method === 'GET') {
+        return res.status(200).json(storage.discounts);
+      }
+
+      if (path === '/discounts' && method === 'POST') {
+        const discount = {
+          id: storage.discounts.length + 1,
+          ...body,
+          createdAt: new Date().toISOString()
+        };
+        storage.discounts.push(discount);
+        return res.status(201).json(discount);
+      }
+
+      if (path.startsWith('/discounts/') && method === 'PUT') {
+        const id = parseInt(path.split('/')[2]);
+        const discount = storage.discounts.find(d => d.id === id);
+        if (!discount) return res.status(404).json({ error: 'Discount not found' });
+        Object.assign(discount, body);
+        return res.status(200).json(discount);
+      }
+
+      if (path.startsWith('/discounts/') && method === 'DELETE') {
+        const id = parseInt(path.split('/')[2]);
+        const index = storage.discounts.findIndex(d => d.id === id);
+        if (index === -1) return res.status(404).json({ error: 'Discount not found' });
+        storage.discounts.splice(index, 1);
+        return res.status(204).end();
+      }
+
+      // Credit Requests endpoints
+      if (path === '/credit-requests' && method === 'GET') {
+        return res.status(200).json(storage.creditRequests);
+      }
+
+      if (path === '/credit-requests' && method === 'POST') {
+        const creditRequest = {
+          id: storage.creditRequests.length + 1,
+          ...body,
+          status: 'pending',
+          createdAt: new Date().toISOString()
+        };
+        storage.creditRequests.push(creditRequest);
+        return res.status(201).json(creditRequest);
+      }
+
+      if (path.startsWith('/credit-requests/') && method === 'PUT') {
+        const id = parseInt(path.split('/')[2]);
+        const creditRequest = storage.creditRequests.find(c => c.id === id);
+        if (!creditRequest) return res.status(404).json({ error: 'Credit request not found' });
+        Object.assign(creditRequest, body);
+        return res.status(200).json(creditRequest);
+      }
+
+      // Service Fees endpoints
+      if (path === '/service-fees' && method === 'GET') {
+        return res.status(200).json(storage.serviceFees);
+      }
+
+      if (path === '/service-fees' && method === 'POST') {
+        const serviceFee = {
+          id: storage.serviceFees.length + 1,
+          ...body,
+          createdAt: new Date().toISOString()
+        };
+        storage.serviceFees.push(serviceFee);
+        return res.status(201).json(serviceFee);
+      }
+
+      if (path.startsWith('/service-fees/') && method === 'PUT') {
+        const id = parseInt(path.split('/')[2]);
+        const serviceFee = storage.serviceFees.find(s => s.id === id);
+        if (!serviceFee) return res.status(404).json({ error: 'Service fee not found' });
+        Object.assign(serviceFee, body);
+        return res.status(200).json(serviceFee);
+      }
+
+      if (path.startsWith('/service-fees/') && method === 'DELETE') {
+        const id = parseInt(path.split('/')[2]);
+        const index = storage.serviceFees.findIndex(s => s.id === id);
+        if (index === -1) return res.status(404).json({ error: 'Service fee not found' });
+        storage.serviceFees.splice(index, 1);
+        return res.status(204).end();
+      }
+
+      // Reminders endpoints
+      if (path === '/reminders' && method === 'GET') {
+        return res.status(200).json(storage.reminders);
+      }
+
+      if (path === '/reminders' && method === 'POST') {
+        const reminder = {
+          id: storage.reminders.length + 1,
+          ...body,
+          createdAt: new Date().toISOString()
+        };
+        storage.reminders.push(reminder);
+        return res.status(201).json(reminder);
+      }
+
+      if (path === '/reminders/today' && method === 'GET') {
+        const today = new Date().toDateString();
+        const todayReminders = storage.reminders.filter(r => 
+          new Date(r.dueDate).toDateString() === today && !r.completed
+        );
+        return res.status(200).json(todayReminders);
+      }
+
+      if (path.startsWith('/reminders/') && method === 'PUT') {
+        const id = parseInt(path.split('/')[2]);
+        const reminder = storage.reminders.find(r => r.id === id);
+        if (!reminder) return res.status(404).json({ error: 'Reminder not found' });
+        Object.assign(reminder, body);
+        return res.status(200).json(reminder);
+      }
+
+      if (path.startsWith('/reminders/') && method === 'DELETE') {
+        const id = parseInt(path.split('/')[2]);
+        const index = storage.reminders.findIndex(r => r.id === id);
+        if (index === -1) return res.status(404).json({ error: 'Reminder not found' });
+        storage.reminders.splice(index, 1);
+        return res.status(204).end();
+      }
+
+      // Stats endpoint
       if (path === '/stats' && method === 'GET') {
         const totalSales = storage.sales.reduce((sum, s) => sum + s.total, 0);
         const totalCOGS = storage.sales.reduce((sum, s) => sum + (s.cogs || 0), 0);
@@ -165,20 +350,68 @@ module.exports = async (req, res) => {
           grossProfit: totalSales - totalCOGS, 
           netProfit: totalSales - totalCOGS - totalExpenses, 
           salesCount: storage.sales.length, 
-          productCount: storage.products.length 
+          productCount: storage.products.length,
+          dailySales: 0,
+          weeklySales: 0
         });
       }
 
+      // Settings endpoint
       if (path === '/settings' && method === 'GET') {
         return res.status(200).json(storage.settings);
       }
 
-      if (path === '/reminders/today' && method === 'GET') {
-        const today = new Date().toDateString();
-        const todayReminders = storage.reminders.filter(r => 
-          new Date(r.dueDate).toDateString() === today && !r.completed
-        );
-        return res.status(200).json(todayReminders);
+      if (path === '/settings' && method === 'POST') {
+        storage.settings = { ...storage.settings, ...body };
+        return res.status(200).json(storage.settings);
+      }
+
+      // Time entries endpoint (basic)
+      if (path === '/time-entries' && method === 'GET') {
+        return res.status(200).json(storage.timeEntries || []);
+      }
+
+      if (path === '/time-entries' && method === 'POST') {
+        const timeEntry = {
+          id: (storage.timeEntries?.length || 0) + 1,
+          ...body,
+          createdAt: new Date().toISOString()
+        };
+        if (!storage.timeEntries) storage.timeEntries = [];
+        storage.timeEntries.push(timeEntry);
+        return res.status(201).json(timeEntry);
+      }
+
+      // Categories endpoint
+      if (path === '/categories' && method === 'GET') {
+        return res.status(200).json([]);
+      }
+
+      // Batches endpoint
+      if (path === '/batches' && method === 'GET') {
+        return res.status(200).json([]);
+      }
+
+      if (path === '/batches' && method === 'POST') {
+        return res.status(201).json({ id: 1, ...body });
+      }
+
+      // Production endpoint
+      if (path === '/production' && method === 'GET') {
+        return res.status(200).json([]);
+      }
+
+      if (path === '/production' && method === 'POST') {
+        return res.status(201).json({ id: 1, ...body });
+      }
+
+      // Price history endpoint
+      if (path === '/price-history' && method === 'GET') {
+        return res.status(200).json([]);
+      }
+
+      if (path === '/price-history' && method === 'POST') {
+        return res.status(201).json({ id: 1, ...body });
       }
 
       return res.status(404).json({ error: 'Not found' });
